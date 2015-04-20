@@ -102,6 +102,31 @@ class Database(object):
             """, column=0)
 
     def get_groups(self):
+        """Get the groups.
+
+        >>> db = Database()
+        >>> sorted(db.get_groups())
+        [(3, 'FUCK', 0, 0), (4, 'HEST', 0, 0), (5, 'KET', 0, 0),
+        (6, 'SPIRIL(?:L?EN)?', 0, 0), (7, '(?:FORM)?JUNTA(?:EN)?', 0, 0),
+        (8, 'N(?:AEST)?FORMATION(?:EN)?', 0, 0),
+        (9, '(?:CERM)?LAUG(?:ET)?', 0, 0), (10, 'REVY(?:EN)?', 0, 0),
+        (11, 'J50', 0, 0), (12, '(ENGINEERING|TK-?E)', 0, 0),
+        (13, 'ADMIN(?:ISTRATOR(?:ERNE|EN)?)?', 0, 0),
+        (21, 'WEB(?:MASTER(?:EN|NE)?)?', 0, 0), (22, 'REVYBAND(?:ET)?', 0, 0),
+        (23, 'REVYCREW', 0, 0), (24, 'REVYSPAM', 0, 0),
+        (25, 'REVIS(ION|OR)', 0, 0), (27, 'G*S?SR', 0, 0),
+        (28, 'REVYTEKNIK', 0, 0), (30, 'FILF', 0, 0), (110, 'BEST', 1, 1),
+        (111, 'BESTFU', 1, 4), (112, 'FU', 1, 1),
+        (113, 'FU(?!CK|LD)[A-Z]{2,4}', 1, 2), (114, 'EFU[A-Z]{2,4}', 1, 2),
+        (115, 'FORM', 1, 2), (116, 'NF', 1, 2), (117, 'CERM', 1, 2),
+        (118, 'VC', 1, 2), (119, 'SEKR', 1, 2), (120, 'PR', 1, 2),
+        (121, 'KASS', 1, 2), (122, 'USERID[0-9]+', 0, 3),
+        (126, '(8|OTT(END)?E)', 0, 0), (128, 'J60', 0, 0),
+        (129, 'J60KOOR', 0, 0), (130, 'INKA', 1, 2), (131, 'HAPPENING', 0, 0),
+        (132, 'TKIT', 0, 0), (134, '(TK)?SY', 0, 0), (136, 'ABEN', 0, 0),
+        (137, 'J60REVY', 0, 0)]
+        """
+
         return self._fetchall("""
             SELECT `id`,`regexp`,`relativ`,`type` FROM grupper
             """)
@@ -131,6 +156,20 @@ class Database(object):
             """, user_id, column=0)
 
     def get_all_best(self):
+        """Get all BEST members.
+
+        >>> db = Database()
+        >>> db.get_all_best()
+        [('Martin Sand Nielsen', 'FORM', 1),
+        ('Jacob Albæk Schnedler ', 'NF', 2),
+        ('Henrik Lund Mortensen ', 'INKA', 3),
+        ('Mathias Jaquet Mavraganis', 'KA$$', 4),
+        ('Jonas Kielsholm', 'CERM', 5),
+        ('Peter Lystlund Matzen', 'VC', 6),
+        ('Alexandra Fabricius Porsgaard', 'PR', 7),
+        ('Camilla Ulbæk Pedersen', 'SEKR', 8)]
+        """
+
         return self._fetchall("""
             SELECT tkfolk.navn, best.titel, best.sortid
             FROM titler, best, tkfolk
