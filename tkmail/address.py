@@ -41,6 +41,7 @@ def translate_recipient(year, name):
     """
 
     db = Database()
+    name = name.replace('$', 'S')  # KA$$ -> KASS hack
     recipient_ids = parse_recipient(name.upper(), db, year)
     email_addresses = [
         addy.replace('&#064;', '@').strip()
