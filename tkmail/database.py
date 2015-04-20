@@ -129,3 +129,13 @@ class Database(object):
             SELECT `id` FROM `tkfolk`
             WHERE `id`='%s'
             """, user_id, column=0)
+
+    def get_all_best(self):
+        return self._fetchall("""
+            SELECT tkfolk.navn, best.titel, best.sortid
+            FROM titler, best, tkfolk
+            WHERE titler.grad = 0
+            AND best.orgtitel = titler.orgtitel
+            AND titler.personid = tkfolk.id
+            ORDER BY `best`.`sortid` ASC
+        """)
