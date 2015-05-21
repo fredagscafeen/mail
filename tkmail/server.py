@@ -173,9 +173,12 @@ class TKForwarder(SMTPForwarder):
 
         tb = ''.join(traceback.format_exc())
         if envelope:
-            self.store_failed_envelope(
-                envelope, str(tb),
-                '%s: %s' % (exc_typename, exc_value))
+            try:
+                self.store_failed_envelope(
+                    envelope, str(tb),
+                    '%s: %s' % (exc_typename, exc_value))
+            except:
+                logging.exception("Could not store_failed_envelope")
 
         exc_key = (filename, line, exc_typename)
 
