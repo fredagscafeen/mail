@@ -234,4 +234,6 @@ class TKForwarder(SMTPForwarder):
             fp.write('From %s\n' % envelope.mailfrom)
             fp.write('To %s\n\n' % envelope.rcpttos)
             fp.write('%s\n' % description)
-            fp.write(str(envelope.message))
+
+        with open('error/%s.txt' % now, 'ab') as fp:
+            fp.write(envelope.message.as_bytes())
