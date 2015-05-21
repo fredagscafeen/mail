@@ -105,9 +105,9 @@ def main():
     lists = {}
     for k in keys:
         if k == 'rcpttos':
-            sort_key = lambda x: tuple(x[1].get(k, []))
+            sort_key = lambda x: tuple(x[1].get(k) or [])
         else:
-            sort_key = lambda x: x[1].get(k, '')
+            sort_key = lambda x: x[1].get(k) or ''
         lists[k] = '\n'.join(
             '%s. %s' % (i + 1, report.get(k))
             for i, report in sorted(
