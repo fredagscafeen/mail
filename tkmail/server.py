@@ -157,6 +157,7 @@ class TKForwarder(SMTPForwarder):
         if not recipients:
             logging.info("%s resolved to the empty list" % name)
             raise InvalidRecipient(rcptto)
+        return recipients
 
     def get_envelope_mailfrom(self, envelope):
         return 'admin@TAAGEKAMMERET.dk'
