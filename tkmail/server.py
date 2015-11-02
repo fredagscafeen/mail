@@ -10,7 +10,7 @@ import traceback
 
 import email.header
 
-from emailtunnel import SMTPForwarder, Message
+from emailtunnel import SMTPForwarder, Message, InvalidRecipient
 
 import tkmail.address
 
@@ -152,7 +152,10 @@ class TKForwarder(SMTPForwarder):
 
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split('@')
-        return tkmail.address.translate_recipient(self.year, name)
+        recipients = tkmail.address.translate_recipient(self.year, name)
+        if not recipients:
+            logging.info("%s resolved to the empty list" % name)
+            raise InvalidRecipient(rcptto)
 
     def get_envelope_mailfrom(self, envelope):
         return 'admin@TAAGEKAMMERET.dk'
