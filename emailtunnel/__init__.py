@@ -185,7 +185,13 @@ class Message(object):
             if charset is not None:
                 if not isinstance(charset, email.header.Charset):
                     charset = email.header.Charset(charset)
-            h.append(s, charset, errors='replace')
+            try:
+                try:
+                    h.append(s, charset, errors='strict')
+                except UnicodeDecodeError:
+                    h.append(s, 'latin1', errors='strict')
+            except:
+                h.append(s, charset, errors='replace')
         return h
 
     @subject.setter
