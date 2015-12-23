@@ -182,7 +182,13 @@ class Message(object):
         except email.errors.HeaderParseError:
             subject_parts = [(subject, None)]
 
-        return email.header.make_header(subject_parts)
+        h = email.header.Header()
+        for s, charset in subject_parts:
+            if charset is not None:
+                if not isinstance(charset, email.header.Charset):
+                    charset = email.header.Charset(charset)
+            h.append(s, charset, errors='replace')
+        return h
 
     @subject.setter
     def subject(self, s):
