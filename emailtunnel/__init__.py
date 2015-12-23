@@ -144,9 +144,7 @@ class Message(object):
 
     def get_unique_header(self, key):
         values = self.get_all_headers(key)
-        if len(values) > 1:
-            raise ValueError('Header %r occurs %s times' % (key, len(values)))
-        elif len(values) == 0:
+        if len(values) == 0:
             raise KeyError('header %r' % (key,))
         else:
             return values[0]
