@@ -185,6 +185,8 @@ def main():
         ErroneousSubjectTest('=?UTF-8?a?hello_world?='),
         # Invalid base64 data; email.header raises an exception
         ErroneousSubjectTest('=?UTF-8?b?hello_world?='),
+        # Invalid start byte in UTF-8
+        ErroneousSubjectTest('=?UTF-8?B?UkVBTCBEaWdpdGFsIGNoYXNpbmcgcGF5bWVudCCjNjkxMC40Nw==?='),
         NoSubjectTest(),
     ]
     test_envelopes = {
