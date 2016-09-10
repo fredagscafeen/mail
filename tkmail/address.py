@@ -1,4 +1,5 @@
 import re
+import functools
 
 from emailtunnel import InvalidRecipient
 import tkmail.database
@@ -154,6 +155,139 @@ def parse_alias_tkfolk(alias, db, current_period):
 
     finally:
         pass
+
+
+def parse_recipient(recipient, db, current_period):
+    """
+    Evaluate each address which is divided by + and -.
+    Collects the resulting sets of not matched and the set of spam addresses.
+    And return the set of person indexes that are to receive the email.
+    """
+
+    personIdOps = []
+    invalid_recipients = []
+    for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
+        try:
+            personIds = parse_alias(name, db, current_period)
+            personIdOps.append((sign or '+', personIds))
+        except InvalidRecipient as e:
+            invalid_recipients.append(e.args[0])
+
+    if invalid_recipients:
+        raise InvalidRecipient(invalid_recipients)
+
+    recipient_ids = set()
+    for sign, personIds in personIdOps:
+        if sign == '+':  # union
+            recipient_ids = recipient_ids.union(personIds)
+        else:  # minus
+            recipient_ids = recipient_ids.difference(personIds)
+
+    return recipient_ids
+
+
+def parse_alias_group(alias, db, current_period):
+    groups = db.get_groups()
+    matches = []
+    for groupId, groupRegexp in groups:
+        groupId = int(groupId)
+        regexp = '^(?P<name>%s)$' % groupRegexp
+        mo = re.match(regexp, alias)
+        if mo:
+            # We cannot use a lambda that closes over groupId
+            # since the captured groupId would change in the next iteration.
+            matches.append(functools.partial(db.get_group_members, groupId))
+
+    if len(matches) > 1:
+        raise ValueError("The alias %r matches more than one group"
+                         % alias)
+
+    if matches:
+        return matches[0]
+
+
+def parse_alias_bestfu_group(alias, db, current_period):
+    anciprefix = r"(?P<pre>(?:[KGBOT][KGBOT0-9]*)?)"
+    ancipostfix = r"(?P<post>(?:[0-9]{2}|[0-9]{4})?)"
+    pattern = '^%s(?P<kind>BEST|FU|BESTFU)%s$' % (anciprefix, ancipostfix)
+    mo = re.match(pattern, alias)
+    if mo is not None:
+        period = get_period(
+            mo.group("pre"),
+            mo.group("post"),
+            current_period)
+        kind = mo.group('kind')
+        if kind == 'BESTFU':
+            return lambda: (db.get_bestfu_members('BEST', period) +
+                            db.get_bestfu_members('FU', period))
+        else:
+            return lambda: db.get_bestfu_members(kind, period)
+
+
+def parse_alias_bestfu_single(alias, db, current_period):
+    anciprefix = r"(?P<pre>(?:[KGBOT][KGBOT0-9]*)?)"
+    ancipostfix = r"(?P<post>(?:[0-9]{2}|[0-9]{4})?)"
+    letter = '[A-Z]|Æ|Ø|Å|AE|OE|AA'
+    letter_map = dict(AE='Æ', OE='Ø', AA='Å')
+    title_patterns = [
+        ('BEST', 'CERM|FORM|INKA|KASS|NF|PR|SEKR|VC'),
+        ('FU', '(?P<a>E?FU)(?P<b>%s)(?P<c>%s)' % (letter, letter)),
+    ]
+
+    for kind, p in title_patterns:
+        pattern = '^%s(?P<root>%s)%s$' % (anciprefix, p, ancipostfix)
+        mo = re.match(pattern, alias)
+        if mo is not None:
+            period = get_period(
+                mo.group("pre"),
+                mo.group("post"),
+                current_period)
+            root = mo.group('root')
+            if kind == 'FU':
+                fu_kind = mo.group('a')
+                letter1 = mo.group('b')
+                letter2 = mo.group('c')
+                assert root == fu_kind + letter1 + letter2
+                # Translate AE OE AA
+                letter1_int = letter_map.get(letter1, letter1)
+                letter2_int = letter_map.get(letter2, letter2)
+                root = fu_kind + letter1_int + letter2_int
+            return lambda: db.get_user_by_title(root, period)
+
+
+def parse_alias_direct_user(alias, db, current_period):
+    mo = re.match(r'^DIRECTUSER(\d+)$', alias)
+    if mo is not None:
+        return lambda: db.get_user_by_id(mo.group(1))
+
+
+def parse_alias(alias, db, current_period):
+    """
+    Evaluates the alias, returning a non-empty list of person IDs.
+    Raise exception if a spam or no match email.
+    """
+
+    # Try these functions until one matches
+    matchers = [
+        parse_alias_group,
+        parse_alias_bestfu_group,
+        parse_alias_bestfu_single,
+        parse_alias_direct_user,
+    ]
+
+    for f in matchers:
+        match = f(alias, db, current_period)
+        if match is not None:
+            break
+    else:
+        raise InvalidRecipient(alias)
+
+    # Perform database lookup according to matched alias
+    person_ids = match()
+    if not person_ids:
+        # No users in the database fit the matched alias
+        raise InvalidRecipient(alias)
+    return person_ids
 
 
 def get_period(prefix, postfix, current_period):
