@@ -9,7 +9,7 @@ def fix_at_escapes(addresses):
     return [addy.strip().replace('&#064;', '@') for addy in addresses]
 
 
-class Database(object):
+class DatabaseTkfolk(object):
     tkfolk_schema = """
         id      int(11)      NO   None  primary, auto_increment
         navn    varchar(50)  YES  None

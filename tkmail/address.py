@@ -1,7 +1,7 @@
 import re
 
 from emailtunnel import InvalidRecipient
-from tkmail.database import Database
+import tkmail.database
 from tkmail.config import ADMINS
 
 
@@ -13,7 +13,7 @@ def get_admin_emails():
 
     email_addresses = []
     try:
-        db = Database()
+        db = tkmail.database.DatabaseTkfolk()
         email_addresses = db.get_admin_emails()
     except:
         pass
@@ -46,14 +46,14 @@ def translate_recipient(year, name):
     ['...@post.au.dk']
     """
 
-    db = Database()
     name = name.replace('$', 'S')  # KA$$ -> KASS hack
-    recipient_ids = parse_recipient(name.upper(), db, year)
-    email_addresses = db.get_email_addresses(recipient_ids)
+    db_tkfolk = tkmail.database.DatabaseTkfolk()
+    recipient_ids_old = parse_recipient_tkfolk(name.upper(), db_tkfolk, year)
+    email_addresses = db_tkfolk.get_email_addresses(recipient_ids_old)
     return email_addresses
 
 
-def parse_recipient(recipient, db, current_period):
+def parse_recipient_tkfolk(recipient, db, current_period):
     """
     Evaluate each address which is divided by + and -.
     Collects the resulting sets of not matched and the set of spam addresses.
@@ -64,7 +64,7 @@ def parse_recipient(recipient, db, current_period):
     invalid_recipients = []
     for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
         try:
-            personIds = parse_alias(name, db, current_period)
+            personIds = parse_alias_tkfolk(name, db, current_period)
             personIdOps.append((sign or '+', personIds))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
@@ -82,7 +82,7 @@ def parse_recipient(recipient, db, current_period):
     return recipient_ids
 
 
-def parse_alias(alias, db, current_period):
+def parse_alias_tkfolk(alias, db, current_period):
     """
     Evaluates the alias, returning a non-empty list of person IDs.
     Raise exception if a spam or no match email.
