@@ -62,7 +62,7 @@ prefixValues = {
 }
 
 
-def parse_recipient(recipient, db, currentYear):
+def parse_recipient(recipient, db, current_period):
     """
     Evaluate each address which is divided by + and -.
     Collects the resulting sets of not matched and the set of spam addresses.
@@ -73,7 +73,7 @@ def parse_recipient(recipient, db, currentYear):
     invalid_recipients = []
     for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
         try:
-            personIds = parse_alias(name, db, currentYear)
+            personIds = parse_alias(name, db, current_period)
             personIdOps.append((sign or '+', personIds))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
