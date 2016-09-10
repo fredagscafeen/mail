@@ -62,8 +62,8 @@ class TKForwarder(SMTPForwarder):
 
     def startup_log(self):
         logging.info(
-            'TKForwarder listening on %s:%s, relaying to port %s, GF year %s'
-            % (self.host, self.port, self.relay_port, self.year))
+            'TKForwarder listening on %s:%s, relaying to %s:%s, GF year %s',
+            self.host, self.port, self.relay_host, self.relay_port, self.year)
 
     def log_receipt(self, peer, envelope):
         mailfrom = envelope.mailfrom
