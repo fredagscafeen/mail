@@ -1,4 +1,5 @@
 import re
+import logging
 import functools
 
 from emailtunnel import InvalidRecipient
@@ -51,6 +52,16 @@ def translate_recipient(year, name):
     db_tkfolk = tkmail.database.DatabaseTkfolk()
     recipient_ids_old = parse_recipient_tkfolk(name.upper(), db_tkfolk, year)
     email_addresses = db_tkfolk.get_email_addresses(recipient_ids_old)
+    db = tkmail.database.Database()
+    recipient_ids = parse_recipient(name.upper(), db, year)
+
+    only_old = set(recipient_ids_old) - set(recipient_ids)
+    only_new = set(recipient_ids) - set(recipient_ids_old)
+    if only_old:
+        logging.warning("Parsing %r: Only in old: %r", name, only_old)
+    if only_new:
+        logging.warning("Parsing %r: Only in new: %r", name, only_new)
+
     return email_addresses
 
 
