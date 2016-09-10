@@ -86,8 +86,8 @@ class TKForwarder(SMTPForwarder):
         else:
             recipients = repr(rcpttos)
 
-        logging.info("Subject: %r From: %s To: %s"
-                     % (str(message.subject), sender, recipients))
+        logging.info("Subject: %r From: %s To: %s",
+                     str(message.subject), sender, recipients)
 
     def log_delivery(self, message, recipients, sender):
         if all('@' in rcpt for rcpt in recipients):
@@ -115,8 +115,8 @@ class TKForwarder(SMTPForwarder):
 
         self.delivered += 1
 
-        logging.info('Subject: %r To: %s'
-                     % (str(message.subject), recipients_string))
+        logging.info('Subject: %r To: %s',
+                     str(message.subject), recipients_string)
 
     def reject(self, envelope):
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
@@ -155,7 +155,7 @@ class TKForwarder(SMTPForwarder):
         name, domain = rcptto.split('@')
         recipients = tkmail.address.translate_recipient(self.year, name)
         if not recipients:
-            logging.info("%s resolved to the empty list" % name)
+            logging.info("%s resolved to the empty list", name)
             raise InvalidRecipient(rcptto)
         return recipients
 
@@ -164,7 +164,7 @@ class TKForwarder(SMTPForwarder):
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
-        logging.info('Invalid recipient: %r' % (exn.args,))
+        logging.info('Invalid recipient: %r', exn.args)
 
     def handle_invalid_recipient(self, envelope, exn):
         self.store_failed_envelope(
