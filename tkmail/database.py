@@ -5,13 +5,6 @@ import mysql.connector
 from tkmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
 
 
-class Error(Exception):
-    """Base class of my own error types"""
-    def __init__(self, msg):
-        super(Error, self).__init__()
-        self.msg = msg
-
-
 def fix_at_escapes(addresses):
     return [addy.strip().replace('&#064;', '@') for addy in addresses]
 
