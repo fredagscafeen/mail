@@ -14,10 +14,7 @@ def get_admin_emails():
     email_addresses = []
     try:
         db = Database()
-        email_addresses = [
-            addy.replace('&#064;', '@')
-            for addy in db.get_admin_emails()
-        ]
+        email_addresses = db.get_admin_emails()
     except:
         pass
 
@@ -43,10 +40,7 @@ def translate_recipient(year, name):
     db = Database()
     name = name.replace('$', 'S')  # KA$$ -> KASS hack
     recipient_ids = parse_recipient(name.upper(), db, year)
-    email_addresses = [
-        addy.replace('&#064;', '@').strip()
-        for addy in db.get_email_addresses(recipient_ids)
-    ]
+    email_addresses = db.get_email_addresses(recipient_ids)
     return email_addresses
 
 

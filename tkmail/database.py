@@ -12,6 +12,10 @@ class Error(Exception):
         self.msg = msg
 
 
+def fix_at_escapes(addresses):
+    return [addy.strip().replace('&#064;', '@') for addy in addresses]
+
+
 class Database(object):
     tkfolk_schema = """
         id      int(11)      NO   None  primary, auto_increment
@@ -86,20 +90,20 @@ class Database(object):
 
     def get_email_addresses(self, id_list):
         id_string = ','.join(str(each) for each in id_list)
-        return self._fetchall("""
+        return fix_at_escapes(self._fetchall("""
             SELECT `email` FROM `tkfolk`
             WHERE `id` IN (%s)
             AND `accepterdirektemail`='Ja'
-            """, id_string, column=0)
+            """, id_string, column=0))
 
     def get_admin_emails(self):
-        return self._fetchall("""
+        return fix_at_escapes(self._fetchall("""
             SELECT `tkfolk`.`email`
             FROM `tkfolk`, `grupper`,`gruppemedlemmer`
             WHERE `grupper`.`navn`='admin'
             AND `gruppemedlemmer`.`gruppeid`=`grupper`.`id`
             AND `gruppemedlemmer`.`personid`= `tkfolk`.`id`
-            """, column=0)
+            """, column=0))
 
     def get_groups(self):
         """Get the groups.
