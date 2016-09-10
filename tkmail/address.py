@@ -35,6 +35,15 @@ def translate_recipient(year, name):
 
     >>> translate_recipient(2010, "BEST2013")
     ["mathiasrav@gmail.com", ...]
+
+    >>> translate_recipient(2006, 'FUAA')
+    ['sidse...']
+
+    >>> translate_recipient(2011, 'FUIØ')
+    ['...@post.au.dk']
+
+    >>> translate_recipient(2011, 'FUIOE')
+    ['...@post.au.dk']
     """
 
     db = Database()
