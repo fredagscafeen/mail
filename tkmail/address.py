@@ -53,15 +53,6 @@ def translate_recipient(year, name):
     return email_addresses
 
 
-prefixValues = {
-    'K': -1,
-    'G': 1,
-    'B': 2,
-    'O': 3,
-    'T': 1
-}
-
-
 def parse_recipient(recipient, db, current_period):
     """
     Evaluate each address which is divided by + and -.
@@ -91,7 +82,7 @@ def parse_recipient(recipient, db, current_period):
     return recipient_ids
 
 
-def parse_alias(alias, db, currentYear):
+def parse_alias(alias, db, current_period):
     """
     Evaluates the alias, returning a non-empty list of person IDs.
     Raise exception if a spam or no match email.
@@ -126,24 +117,27 @@ def parse_alias(alias, db, currentYear):
         if groupType == 0:  # Group, without aging
             personIds = db.get_group_members(groupId)
         elif groupType == 1:  # Group with aging
-            grad = getGrad(
+            period = get_period(
                 result.group("pre"),
                 result.group("post"),
-                currentYear)
+                current_period)
+            grad = current_period - period
             personIds = db.get_grad_group_members(groupId, grad)
         elif groupType == 2:  # Titel, with/without aging
-            grad = getGrad(
+            period = get_period(
                 result.group("pre"),
                 result.group("post"),
-                currentYear)
+                current_period)
+            grad = current_period - period
             personIds = db.get_user_by_title(result.group('name'), grad)
         elif groupType == 3:  # Direct user
             personIds = db.get_user_by_id(result.group('name')[6:])
         elif groupType == 4:  # BESTFU hack
-            grad = getGrad(
+            period = get_period(
                 result.group("pre"),
                 result.group("post"),
-                currentYear)
+                current_period)
+            grad = current_period - period
             personIds = (
                 db.get_grad_group_members(groupId + 1, grad)
                 + db.get_grad_group_members(groupId - 1, grad))
@@ -162,46 +156,48 @@ def parse_alias(alias, db, currentYear):
         pass
 
 
-def getGrad(preFix, postFix, currentYear):
+def get_period(prefix, postfix, current_period):
     """
-    CurrentYear is the year where the current BEST was elected.
-    Assumes currentyear <= 2056.
-    Returnes the corresponding grad of pre,post and currentYear.
+    current_period is the year where the current BEST was elected.
+    Assumes current_period <= 2056.
+    Returns the corresponding period of prefix, postfix and current_period.
     (Calculates as the person have the prefix in year postfix)
     """
 
-    if not postFix:
-        grad = 0
+    if not postfix:
+        period = current_period
     else:
-        if len(postFix) == 4:
-            first, second = int(postFix[0:2]), int(postFix[2:4])
-            # Note that postFix 1920, 2021 and 2122 are technically ambiguous,
+        if len(postfix) == 4:
+            first, second = int(postfix[0:2]), int(postfix[2:4])
+            # Note that postfix 1920, 2021 and 2122 are technically ambiguous,
             # but luckily there was no BEST in 1920 and this script hopefully
             # won't live until the year 2122, so they are not actually
             # ambiguous.
             if (first + 1) % 100 == second:
                 # There should be exactly one year between the two numbers
                 if first > 56:
-                    grad = currentYear - (1900 + first)
+                    period = 1900 + first
                 else:
-                    grad = currentYear - (2000 + first)
+                    period = 2000 + first
             elif first in (19, 20):
                 # 19xx or 20xx
-                grad = currentYear - int(postFix)
+                period = int(postfix)
             else:
-                raise InvalidRecipient(postFix)
-        elif len(postFix) == 2:
-            year = int(postFix[0:2])
+                raise InvalidRecipient(postfix)
+        elif len(postfix) == 2:
+            year = int(postfix[0:2])
             if year > 56:  # 19??
-                grad = currentYear - (1900 + year)
+                period = 1900 + year
             else:  # 20??
-                grad = currentYear - (2000 + year)
+                period = 2000 + year
         else:
-            raise InvalidRecipient(postFix)
+            raise InvalidRecipient(postfix)
 
     # Now evaluate the prefix:
-    for base, exponent in re.findall(r"([KGBOT])([0-9]*)", preFix):
+    prefix_value = dict(K=-1, G=1, B=2, O=3, T=1)
+    grad = 0
+    for base, exponent in re.findall(r"([KGBOT])([0-9]*)", prefix):
         exponent = int(exponent or 1)
-        grad += prefixValues[base] * int(exponent)
+        grad += prefix_value[base] * exponent
 
-    return grad
+    return period - grad
