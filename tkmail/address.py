@@ -49,23 +49,9 @@ def translate_recipient(year, name):
     """
 
     name = name.replace('$', 'S')  # KA$$ -> KASS hack
-    db_tkfolk = tkmail.database.DatabaseTkfolk()
-    try:
-        old_year = 2015
-        recipient_ids_old = parse_recipient_tkfolk(name.upper(), db_tkfolk, old_year)
-    except InvalidRecipient:
-        recipient_ids_old = []
     db = tkmail.database.Database()
     recipient_ids = parse_recipient(name.upper(), db, year)
     email_addresses = db.get_email_addresses(recipient_ids)
-
-    only_old = set(recipient_ids_old) - set(recipient_ids)
-    only_new = set(recipient_ids) - set(recipient_ids_old)
-    if only_old:
-        logging.warning("Parsing %r: Only in old: %r", name, only_old)
-    if only_new:
-        logging.warning("Parsing %r: Only in new: %r", name, only_new)
-
     return email_addresses
 
 
