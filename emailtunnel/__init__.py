@@ -538,4 +538,4 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                 if received is not None:
                     envelope.message.add_received_line(received)
                 group_recipients = self.get_group_recipients(group)
-                self.deliver(envelope.message, recipients, mailfrom)
+                self.deliver(envelope.message, group_recipients, mailfrom)
