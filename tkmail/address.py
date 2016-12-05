@@ -237,6 +237,7 @@ def parse_alias_bestfu_group(alias, db, current_period):
         else:
             f = lambda: db.get_bestfu_members(kind, period)
         return f, '%s%s' % (kind, period)
+    return None, None
 
 
 def parse_alias_bestfu_single(alias, db, current_period):
@@ -276,6 +277,7 @@ def parse_alias_direct_user(alias, db, current_period):
     mo = re.match(r'^DIRECTUSER(\d+)$', alias)
     if mo is not None:
         return (lambda: db.get_user_by_id(mo.group(1))), alias
+    return None, None
 
 
 def parse_alias(alias, db, current_period):
