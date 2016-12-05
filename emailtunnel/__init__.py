@@ -25,6 +25,7 @@ from io import BytesIO
 import os
 import re
 import sys
+import copy
 import logging
 import datetime
 
@@ -483,8 +484,8 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                 '%a, %e %b %Y %T +0000 (UTC)'),
         )
 
-    def _get_envelope_received_header(self, envelope, peer):
-        s = self.get_envelope_received(envelope, peer)
+    def _get_envelope_received_header(self, envelope, peer, **kwargs):
+        s = self.get_envelope_received(envelope, peer, **kwargs)
         if s is None:
             return None
         lines = [line.strip() for line in s.splitlines()]
@@ -515,11 +516,26 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
 
             return '550 Requested action not taken: mailbox unavailable'
 
-        mailfrom = self.get_envelope_mailfrom(envelope)
+        if all(isinstance(r, str) for r in recipients):
+            # No extra data; forward the envelope in one delivery
+            mailfrom = self.get_envelope_mailfrom(envelope)
 
-        received = self._get_envelope_received_header(envelope, peer)
+            received = self._get_envelope_received_header(envelope, peer)
 
-        if received is not None:
-            envelope.message.add_received_line(received)
+            if received is not None:
+                envelope.message.add_received_line(received)
 
-        self.deliver(envelope.message, recipients, mailfrom)
+            self.deliver(envelope.message, recipients, mailfrom)
+
+        else:
+            original_envelope = envelope
+            for group in recipients:
+                envelope = copy.deepcopy(original_envelope)
+                mailfrom = self.get_envelope_mailfrom(
+                    envelope, recipients=group)
+                received = self._get_envelope_received_header(
+                    envelope, peer, recipients=group)
+                if received is not None:
+                    envelope.message.add_received_line(received)
+                group_recipients = self.get_group_recipients(group)
+                self.deliver(envelope.message, recipients, mailfrom)
