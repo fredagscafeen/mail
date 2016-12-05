@@ -26,7 +26,7 @@ def get_admin_emails():
     return email_addresses
 
 
-def translate_recipient(year, name):
+def translate_recipient(year, name, list_ids=False):
     """Translate recipient `name` in GF year `year`.
 
     >>> translate_recipient(2010, "K3FORM")
@@ -51,8 +51,13 @@ def translate_recipient(year, name):
     name = name.replace('$', 'S')  # KA$$ -> KASS hack
     db = tkmail.database.Database()
     recipient_ids, origin = parse_recipient(name.upper(), db, year)
+    assert isinstance(recipient_ids, list) and isinstance(origin, list)
+    assert len(recipient_ids) == len(origin)
     email_addresses = db.get_email_addresses(recipient_ids)
-    return email_addresses
+    if list_ids:
+        return email_addresses, dict(zip(email_addresses, origin))
+    else:
+        return email_addresses
 
 
 def parse_recipient_tkfolk(recipient, db, current_period):
