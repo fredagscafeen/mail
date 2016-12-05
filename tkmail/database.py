@@ -227,6 +227,7 @@ class Database(object):
 
         >>> db = Database()
         >>> sorted(db.get_groups())
+        ... # TODO: fix output to include name
         [(3, 'FUCK'), (4, 'HEST'), (5, 'KET'),
         (6, 'SPIRIL(?:L?EN)?'), (7, '(?:FORM)?JUNTA(?:EN)?'),
         (8, 'N(?:AEST)?FORMATION(?:EN)?'), (9, '(?:CERM)?LAUG(?:ET)?'),
@@ -244,7 +245,7 @@ class Database(object):
         """
 
         return self._fetchall("""
-            SELECT `id`, `regexp` FROM idm_group
+            SELECT `id`, `name`, `regexp` FROM idm_group
             """)
 
     def get_group_members(self, group_id):

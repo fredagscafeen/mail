@@ -50,7 +50,7 @@ def translate_recipient(year, name):
 
     name = name.replace('$', 'S')  # KA$$ -> KASS hack
     db = tkmail.database.Database()
-    recipient_ids = parse_recipient(name.upper(), db, year)
+    recipient_ids, origin = parse_recipient(name.upper(), db, year)
     email_addresses = db.get_email_addresses(recipient_ids)
     return email_addresses
 
@@ -169,8 +169,8 @@ def parse_recipient(recipient, db, current_period):
     invalid_recipients = []
     for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
         try:
-            personIds = parse_alias(name, db, current_period)
-            personIdOps.append((sign or '+', personIds))
+            personIds, source = parse_alias(name, db, current_period)
+            personIdOps.append((sign or '+', personIds, source))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
 
@@ -178,26 +178,33 @@ def parse_recipient(recipient, db, current_period):
         raise InvalidRecipient(invalid_recipients)
 
     recipient_ids = set()
-    for sign, personIds in personIdOps:
+    origin = {}
+    for sign, personIds, source in personIdOps:
         if sign == '+':  # union
             recipient_ids = recipient_ids.union(personIds)
+            for p in personIds:
+                origin[p] = source
         else:  # minus
             recipient_ids = recipient_ids.difference(personIds)
+            for p in personIds:
+                origin.pop(p, None)
 
-    return recipient_ids
+    recipient_ids = sorted(recipient_ids)
+    return recipient_ids, [origin[r] for r in recipient_ids]
 
 
 def parse_alias_group(alias, db, current_period):
     groups = db.get_groups()
     matches = []
-    for groupId, groupRegexp in groups:
+    for groupId, name, groupRegexp in groups:
         groupId = int(groupId)
         regexp = '^(?P<name>%s)$' % groupRegexp
         mo = re.match(regexp, alias)
         if mo:
             # We cannot use a lambda that closes over groupId
             # since the captured groupId would change in the next iteration.
-            matches.append(functools.partial(db.get_group_members, groupId))
+            matches.append(
+                (functools.partial(db.get_group_members, groupId), name))
 
     if len(matches) > 1:
         raise ValueError("The alias %r matches more than one group"
@@ -205,6 +212,7 @@ def parse_alias_group(alias, db, current_period):
 
     if matches:
         return matches[0]
+    return None, None
 
 
 def parse_alias_bestfu_group(alias, db, current_period):
@@ -219,10 +227,11 @@ def parse_alias_bestfu_group(alias, db, current_period):
             current_period)
         kind = mo.group('kind')
         if kind == 'BESTFU':
-            return lambda: (db.get_bestfu_members('BEST', period) +
-                            db.get_bestfu_members('FU', period))
+            f = lambda: (db.get_bestfu_members('BEST', period) +
+                         db.get_bestfu_members('FU', period))
         else:
-            return lambda: db.get_bestfu_members(kind, period)
+            f = lambda: db.get_bestfu_members(kind, period)
+        return f, '%s%s' % (kind, period)
 
 
 def parse_alias_bestfu_single(alias, db, current_period):
@@ -253,13 +262,15 @@ def parse_alias_bestfu_single(alias, db, current_period):
                 letter1_int = letter_map.get(letter1, letter1)
                 letter2_int = letter_map.get(letter2, letter2)
                 root = fu_kind + letter1_int + letter2_int
-            return lambda: db.get_user_by_title(root, period)
+            source = '%s%s' % (kind, period)
+            return (lambda: db.get_user_by_title(root, period)), source
+    return None, None
 
 
 def parse_alias_direct_user(alias, db, current_period):
     mo = re.match(r'^DIRECTUSER(\d+)$', alias)
     if mo is not None:
-        return lambda: db.get_user_by_id(mo.group(1))
+        return (lambda: db.get_user_by_id(mo.group(1))), alias
 
 
 def parse_alias(alias, db, current_period):
@@ -277,7 +288,7 @@ def parse_alias(alias, db, current_period):
     ]
 
     for f in matchers:
-        match = f(alias, db, current_period)
+        match, canonical = f(alias, db, current_period)
         if match is not None:
             break
     else:
@@ -288,7 +299,7 @@ def parse_alias(alias, db, current_period):
     if not person_ids:
         # No users in the database fit the matched alias
         raise InvalidRecipient(alias)
-    return person_ids
+    return person_ids, canonical
 
 
 def get_period(prefix, postfix, current_period):
