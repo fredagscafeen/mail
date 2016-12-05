@@ -155,6 +155,33 @@ class NoSubjectTest(object):
         return str(id(self))
 
 
+class ListHeaderTest(object):
+    def get_envelopes(self):
+        return [
+            ('-F', 'list-header-test@localhost',
+             '-T', 'FORM13+FUUS13@TAAGEKAMMERET.dk',
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        e1, e2 = envelopes
+        m1, m2 = e1.message, e2.message
+
+        headers = 'Sender List-Id List-Unsubscribe List-Help List-Subscribe'
+        for h in headers.split():
+            try:
+                v1 = m1.get_unique_header(h)
+                v2 = m2.get_unique_header(h)
+            except KeyError as e:
+                raise AssertionError('No %s in message' % h) from e
+            n_best = ('best' in v1.lower()) + ('best' in v2.lower())
+            n_fu = ('fu' in v1.lower()) + ('fu' in v2.lower())
+            assert n_best == n_fu == 0 or n_best == n_fu == 1
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 def main():
     relayer_port = 11110
     dumper_port = 11111
@@ -188,6 +215,7 @@ def main():
         # Invalid start byte in UTF-8
         ErroneousSubjectTest('=?UTF-8?B?UkVBTCBEaWdpdGFsIGNoYXNpbmcgcGF5bWVudCCjNjkxMC40Nw==?='),
         NoSubjectTest(),
+        ListHeaderTest(),
     ]
     test_envelopes = {
         test.get_test_id(): []
