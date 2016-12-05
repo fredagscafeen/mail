@@ -153,14 +153,50 @@ class TKForwarder(SMTPForwarder):
 
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split('@')
-        recipients = tkmail.address.translate_recipient(self.year, name)
+        recipients, origin = tkmail.address.translate_recipient(
+            self.year, name, list_ids=True)
         if not recipients:
             logging.info("%s resolved to the empty list", name)
             raise InvalidRecipient(rcptto)
+        recipients.sort(key=lambda r: origin[r])
+        group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
+        groups = [(o, frozenset(group))
+                  for o, group in group_iter]
+        return groups
+
+    def get_group_recipients(self, group):
+        origin, recipients = group
         return recipients
 
-    def get_envelope_mailfrom(self, envelope):
+    def get_envelope_mailfrom(self, envelope, recipients=None):
         return 'admin@TAAGEKAMMERET.dk'
+
+    def get_sender_header(self, envelope, group):
+        return self.get_envelope_mailfrom(envelope)
+
+    def get_list_name(self, envelope, group):
+        origin, recipients = group
+        return origin.lower()
+
+    def get_list_id_header(self, envelope, group):
+        return '%s.TAAGEKAMMERET.dk' % self.get_list_name(envelope, group)
+
+    def get_list_unsubscribe_header(self, envelope, group):
+        origin, recipients = group
+        sender = self.get_sender_header(envelope, group)
+        o = self.get_list_name(envelope, group)
+        return '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, o)
+
+    def get_list_help_header(self, envelope, group):
+        origin, recipients = group
+        sender = self.get_sender_header(envelope, group)
+        return '<mailto:%s?subject=list-help>' % (sender,)
+
+    def get_list_subscribe_header(self, envelope, group):
+        origin, recipients = group
+        sender = self.get_sender_header(envelope, group)
+        o = self.get_list_name(envelope, group)
+        return '<mailto:%s?subject=subscribe%%20%s>' % (sender, o)
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
