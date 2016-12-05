@@ -466,7 +466,7 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
         """
         return envelope.mailfrom
 
-    def get_envelope_received(self, envelope, peer):
+    def get_envelope_received(self, envelope, peer, recipients=None):
         """Compute the value of the Received:-header to add.
 
         By default, we add a header with From, By, For and date information
