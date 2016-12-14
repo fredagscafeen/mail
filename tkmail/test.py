@@ -125,6 +125,56 @@ class SubjectRewriteTest(object):
         return str(id(self))
 
 
+class RejectSubjectTest(object):
+    def __init__(self, subject):
+        self.subject = subject
+
+    def get_envelopes(self):
+        return [
+            ('-F', 'reject-subject-test@localhost',
+             '-T', 'admin@TAAGEKAMMERET.dk',
+             '-s', self.subject,
+             '-I', 'Subject', self.subject,
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        if envelopes:
+            for e in envelopes:
+                subject = e.message.subject
+                print(subject)
+                print(subject.encode())
+            raise AssertionError('Subject %r not rejected' % (self.subject,))
+
+    def get_test_id(self):
+        return str(id(self))
+
+
+class RejectHeaderTest(object):
+    def __init__(self, field, value):
+        self.field = field
+        self.value = value
+
+    def get_envelopes(self):
+        return [
+            ('-F', 'reject-header-test@localhost',
+             '-T', 'admin@TAAGEKAMMERET.dk',
+             '-s', self.get_test_id(),
+             '-I', self.field, self.value,
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        if envelopes:
+            for e in envelopes:
+                print(e.message.get_all_headers(self.field))
+            raise AssertionError('Header %s: %r not rejected' %
+                                 (self.field, self.value))
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 class ErroneousSubjectTest(object):
     def __init__(self, subject):
         self.subject = subject
@@ -227,6 +277,12 @@ def main():
         ErroneousSubjectTest('=?UTF-8?B?UkVBTCBEaWdpdGFsIGNoYXNpbmcgcGF5bWVudCCjNjkxMC40Nw==?='),
         NoSubjectTest(),
         ListHeaderTest(),
+        RejectSubjectTest('=?unknown-8bit?b?VW5k?='),
+        RejectSubjectTest('Undelivered Mail Returned to Sender'),
+        # The following is disabled since emailtunnel.send can't send this
+        # Content-Type.
+        # RejectHeaderTest('Content-Type',
+        #                  'multipart/report; report-type=delivery-status'),
     ]
     test_envelopes = {
         test.get_test_id(): []
