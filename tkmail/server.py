@@ -204,7 +204,7 @@ class TKForwarder(SMTPForwarder):
         unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
         help = '<mailto:%s?subject=list-help>' % (sender,)
         sub = '<mailto:%s?subject=subscribe%%20%s>' % (sender, list_name)
-        return [
+        headers = [
             ('Sender', sender),
             ('List-Name', list_name),
             ('List-Id', list_id),
@@ -212,6 +212,7 @@ class TKForwarder(SMTPForwarder):
             ('List-Help', help),
             ('List-Subscribe', sub),
         ]
+        return headers
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
