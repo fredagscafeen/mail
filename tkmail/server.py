@@ -135,9 +135,9 @@ class TKForwarder(SMTPForwarder):
         ctype_report = content_type.startswith('multipart/report')
         ctype_delivery = 'report-type=delivery-status' in content_type
 
-        return to_admin and any((
-            delivery_status_subject,
-            ctype_report and ctype_delivery,
+        return any((
+            to_admin and delivery_status_subject,
+            to_admin and ctype_report and ctype_delivery,
         ))
 
     def handle_envelope(self, envelope, peer):
