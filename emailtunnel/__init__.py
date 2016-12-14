@@ -512,17 +512,26 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
     def handle_invalid_recipient(self, envelope, exn):
         pass
 
-    def _add_list_headers(self, envelope, group):
-        headers = 'Sender List-Id List-Unsubscribe List-Help List-Subscribe'
-        for h in headers.split():
+    def get_extra_headers(self, envelope, group):
+        headers = []
+        fields = 'Sender List-Id List-Unsubscribe List-Help List-Subscribe'
+        # Call get_sender_header, get_list_id_header,
+        # get_list_unsubscribe_header, get_list_help_header,
+        # get_list_subscribe_header
+        for h in fields.split():
             method_name = 'get_%s_header' % h.lower().replace('-', '_')
             try:
                 f = getattr(self, method_name)
             except AttributeError:
                 continue
-            header = f(envelope, group)
-            if header is not None:
-                envelope.message.set_unique_header(h, header)
+            value = f(envelope, group)
+            if value is not None:
+                headers.append((h, value))
+        return headers
+
+    def _add_extra_headers(self, envelope, group):
+        for field, value in self.get_extra_headers(envelope, group):
+            envelope.message.set_unique_header(field, value)
 
     def handle_envelope(self, envelope, peer):
         new_subject = self.translate_subject(envelope)
@@ -560,5 +569,5 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                 if received is not None:
                     envelope.message.add_received_line(received)
                 group_recipients = self.get_group_recipients(group)
-                self._add_list_headers(envelope, group)
+                self._add_extra_headers(envelope, group)
                 self.deliver(envelope.message, group_recipients, mailfrom)
