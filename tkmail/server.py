@@ -127,8 +127,16 @@ class TKForwarder(SMTPForwarder):
             'Delayed Mail' in subject or
             'Undelivered Mail Returned to Sender' in subject)
 
+        try:
+            content_type = envelope.message.get_unique_header('Content-Type')
+        except KeyError:
+            content_type = ''
+        ctype_report = content_type.startswith('multipart/report')
+        ctype_delivery = 'report-type=delivery-status' in content_type
+
         return to_admin and any((
             delivery_status_subject,
+            ctype_report and ctype_delivery,
         ))
 
     def handle_envelope(self, envelope, peer):
