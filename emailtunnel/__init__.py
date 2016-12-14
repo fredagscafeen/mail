@@ -54,6 +54,28 @@ def now_string():
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 
 
+def decode_any_header(value):
+    '''Wrapper around email.header.decode_header to absorb all errors.'''
+    try:
+        chunks = email.header.decode_header(value)
+    except email.errors.HeaderParseError:
+        chunks = [(value, None)]
+
+    header = email.header.Header()
+    for string, charset in chunks:
+        if charset is not None:
+            if not isinstance(charset, email.header.Charset):
+                charset = email.header.Charset(charset)
+        try:
+            try:
+                header.append(string, charset, errors='strict')
+            except UnicodeDecodeError:
+                header.append(string, 'latin1', errors='strict')
+        except:
+            header.append(string, charset, errors='replace')
+    return header
+
+
 class InvalidRecipient(Exception):
     pass
 
@@ -180,24 +202,7 @@ class Message(object):
         except KeyError:
             subject = ''
 
-        try:
-            subject_parts = email.header.decode_header(subject)
-        except email.errors.HeaderParseError:
-            subject_parts = [(subject, None)]
-
-        h = email.header.Header()
-        for s, charset in subject_parts:
-            if charset is not None:
-                if not isinstance(charset, email.header.Charset):
-                    charset = email.header.Charset(charset)
-            try:
-                try:
-                    h.append(s, charset, errors='strict')
-                except UnicodeDecodeError:
-                    h.append(s, 'latin1', errors='strict')
-            except:
-                h.append(s, charset, errors='replace')
-        return h
+        return decode_any_header(subject)
 
     @subject.setter
     def subject(self, s):
