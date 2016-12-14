@@ -193,32 +193,22 @@ class TKForwarder(SMTPForwarder):
     def get_envelope_mailfrom(self, envelope, recipients=None):
         return 'admin@TAAGEKAMMERET.dk'
 
-    def get_sender_header(self, envelope, group):
-        return self.get_envelope_mailfrom(envelope)
-
-    def get_list_name(self, envelope, group):
+    def get_extra_headers(self, envelope, group):
+        sender = self.get_envelope_mailfrom(envelope)
         origin, recipients = group
-        return origin.lower()
-
-    def get_list_id_header(self, envelope, group):
-        return '%s.TAAGEKAMMERET.dk' % self.get_list_name(envelope, group)
-
-    def get_list_unsubscribe_header(self, envelope, group):
-        origin, recipients = group
-        sender = self.get_sender_header(envelope, group)
-        o = self.get_list_name(envelope, group)
-        return '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, o)
-
-    def get_list_help_header(self, envelope, group):
-        origin, recipients = group
-        sender = self.get_sender_header(envelope, group)
-        return '<mailto:%s?subject=list-help>' % (sender,)
-
-    def get_list_subscribe_header(self, envelope, group):
-        origin, recipients = group
-        sender = self.get_sender_header(envelope, group)
-        o = self.get_list_name(envelope, group)
-        return '<mailto:%s?subject=subscribe%%20%s>' % (sender, o)
+        list_name = origin.lower()
+        list_id = '%s.TAAGEKAMMERET.dk' % list_name
+        unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
+        help = '<mailto:%s?subject=list-help>' % (sender,)
+        sub = '<mailto:%s?subject=subscribe%%20%s>' % (sender, list_name)
+        return [
+            ('Sender', sender),
+            ('List-Name', list_name),
+            ('List-Id', list_id),
+            ('List-Unsubscribe', unsub),
+            ('List-Help', help),
+            ('List-Subscribe', sub),
+        ]
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
