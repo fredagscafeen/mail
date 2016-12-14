@@ -199,7 +199,7 @@ class TKForwarder(SMTPForwarder):
 
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
-        list_name = group.origin.lower()
+        list_name = str(group.origin).lower()
         list_id = '%s.TAAGEKAMMERET.dk' % list_name
         unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
         help = '<mailto:%s?subject=list-help>' % (sender,)

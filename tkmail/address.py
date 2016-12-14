@@ -1,9 +1,30 @@
 import re
 import functools
+from collections import namedtuple
 
 from emailtunnel import InvalidRecipient
 import tkmail.database
 from tkmail.config import ADMINS
+
+
+GroupAliasBase = namedtuple('GroupAlias', 'name'.split())
+PeriodAliasBase = namedtuple('PeriodAlias', 'kind period root'.split())
+DirectAliasBase = namedtuple('DirectAlias', 'pk'.split())
+
+
+class GroupAlias(GroupAliasBase):
+    def __str__(self):
+        return self.name
+
+
+class PeriodAlias(PeriodAliasBase):
+    def __str__(self):
+        return '%s%s' % (self.kind, self.period)
+
+
+class DirectAlias(DirectAliasBase):
+    def __str__(self):
+        return 'DIRECTUSER%s' % self.pk
 
 
 def get_admin_emails():
@@ -208,7 +229,8 @@ def parse_alias_group(alias, db, current_period):
             # We cannot use a lambda that closes over groupId
             # since the captured groupId would change in the next iteration.
             matches.append(
-                (functools.partial(db.get_group_members, groupId), name))
+                (functools.partial(db.get_group_members, groupId),
+                 GroupAlias(name)))
 
     if len(matches) > 1:
         raise ValueError("The alias %r matches more than one group"
@@ -235,7 +257,7 @@ def parse_alias_bestfu_group(alias, db, current_period):
                          db.get_bestfu_members('FU', period))
         else:
             f = lambda: db.get_bestfu_members(kind, period)
-        return f, '%s%s' % (kind, period)
+        return f, PeriodAlias(kind, period, root=None)
     return None, None
 
 
@@ -267,7 +289,7 @@ def parse_alias_bestfu_single(alias, db, current_period):
                 letter1_int = letter_map.get(letter1, letter1)
                 letter2_int = letter_map.get(letter2, letter2)
                 root = fu_kind + letter1_int + letter2_int
-            source = '%s%s' % (kind, period)
+            source = PeriodAlias(kind, period, root)
             return (lambda: db.get_user_by_title(root, period)), source
     return None, None
 
@@ -275,7 +297,8 @@ def parse_alias_bestfu_single(alias, db, current_period):
 def parse_alias_direct_user(alias, db, current_period):
     mo = re.match(r'^DIRECTUSER(\d+)$', alias)
     if mo is not None:
-        return (lambda: db.get_user_by_id(mo.group(1))), alias
+        pk = int(mo.group(1))
+        return (lambda: db.get_user_by_id(pk)), DirectAlias(pk)
     return None, None
 
 
