@@ -120,10 +120,16 @@ class TKForwarder(SMTPForwarder):
 
     def reject(self, envelope):
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
+        to_admin = rcpttos == ('admin@taagekammeret.dk',)
+
         subject = str(envelope.message.subject)
-        return (rcpttos == ('admin@taagekammeret.dk',)
-                and ('Delayed Mail' in subject
-                     or 'Undelivered Mail Returned to Sender' in subject))
+        delivery_status_subject = (
+            'Delayed Mail' in subject or
+            'Undelivered Mail Returned to Sender' in subject)
+
+        return to_admin and any((
+            delivery_status_subject,
+        ))
 
     def handle_envelope(self, envelope, peer):
         if self.reject(envelope):
