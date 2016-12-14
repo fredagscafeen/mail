@@ -122,10 +122,11 @@ class TKForwarder(SMTPForwarder):
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
         to_admin = rcpttos == ('admin@taagekammeret.dk',)
 
-        subject = str(envelope.message.subject)
+        subject = envelope.message.subject
+        subject_str = str(subject)
         delivery_status_subject = (
-            'Delayed Mail' in subject or
-            'Undelivered Mail Returned to Sender' in subject)
+            'Delayed Mail' in subject_str or
+            'Undelivered Mail Returned to Sender' in subject_str)
 
         try:
             content_type = envelope.message.get_unique_header('Content-Type')
