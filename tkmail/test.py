@@ -46,6 +46,9 @@ class RecipientTest(object):
         return str(id(self))
 
     def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
         recipients = []
         for i, envelope in enumerate(envelopes):
             recipients += envelope.rcpttos
@@ -90,6 +93,9 @@ class SubjectRewriteTest(object):
         ]
 
     def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
         message = envelopes[0].message
 
         try:
@@ -132,8 +138,9 @@ class ErroneousSubjectTest(object):
         ]
 
     def check_envelopes(self, envelopes):
-        # If the message did not throw an error, we are happy
-        pass
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
 
     def get_test_id(self):
         return str(id(self))
@@ -148,8 +155,9 @@ class NoSubjectTest(object):
         ]
 
     def check_envelopes(self, envelopes):
-        # If the message did not throw an error, we are happy
-        pass
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
 
     def get_test_id(self):
         return str(id(self))
@@ -164,6 +172,9 @@ class ListHeaderTest(object):
         ]
 
     def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
         e1, e2 = envelopes
         m1, m2 = e1.message, e2.message
 
@@ -249,8 +260,6 @@ def main():
         try:
             test_id = test.get_test_id()
             e = test_envelopes[test_id]
-            if not e:
-                raise AssertionError("No envelopes for test id %r" % test_id)
             test.check_envelopes(e)
         except AssertionError as e:
             logging.error("Test %s failed: %s" % (i, e))
