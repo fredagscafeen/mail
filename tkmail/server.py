@@ -15,6 +15,11 @@ from emailtunnel import SMTPForwarder, Message, InvalidRecipient
 
 import tkmail.address
 
+from tkmail.address import (
+    GroupAlias,
+    # PeriodAlias, DirectAlias,
+)
+
 
 RecipientGroup = namedtuple(
     'RecipientGroup', 'origin recipients'.split())
@@ -212,6 +217,11 @@ class TKForwarder(SMTPForwarder):
             ('List-Help', help),
             ('List-Subscribe', sub),
         ]
+        if isinstance(group.origin, GroupAlias):
+            headers.extend([
+                ('Precedence', 'bulk'),
+                ('X-Auto-Response-Suppress', 'OOF'),
+            ])
         return headers
 
     def log_invalid_recipient(self, envelope, exn):
