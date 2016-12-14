@@ -135,9 +135,19 @@ class TKForwarder(SMTPForwarder):
         ctype_report = content_type.startswith('multipart/report')
         ctype_delivery = 'report-type=delivery-status' in content_type
 
+        header_items = envelope.message.header_items()
+        headers = [header for field, header in header_items]
+        chunks = sum((email.header.decode_header(header)
+                      if isinstance(header, str)
+                      else getattr(header, '_chunks', [])
+                      for header in headers), [])
+        any_unknown = any(charset == email.charset.UNKNOWN8BIT
+                          for string, charset in chunks)
+
         return any((
             to_admin and delivery_status_subject,
             to_admin and ctype_report and ctype_delivery,
+            any_unknown,
         ))
 
     def handle_envelope(self, envelope, peer):
