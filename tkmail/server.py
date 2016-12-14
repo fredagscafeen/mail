@@ -137,10 +137,7 @@ class TKForwarder(SMTPForwarder):
 
         header_items = envelope.message.header_items()
         headers = [header for field, header in header_items]
-        chunks = sum((email.header.decode_header(header)
-                      if isinstance(header, str)
-                      else getattr(header, '_chunks', [])
-                      for header in headers), [])
+        chunks = sum((header._chunks for header in headers), [])
         any_unknown = any(charset == email.charset.UNKNOWN8BIT
                           for string, charset in chunks)
 
