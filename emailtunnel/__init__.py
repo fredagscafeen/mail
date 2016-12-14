@@ -135,6 +135,10 @@ class Message(object):
     def get_header(self, key, default=None):
         return self.message.get(key, default)
 
+    def header_items(self):
+        '''Get all the message's header fields and values.'''
+        return self.message.items()
+
     def get_all_headers(self, key):
         """Return a list of headers with the given key.
 
