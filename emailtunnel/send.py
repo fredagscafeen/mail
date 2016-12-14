@@ -91,10 +91,10 @@ def main(*args, **kwargs):
     if args.subject is not None:
         message.subject = args.subject
 
+    message.set_body_text(body, args.encoding)
+
     for key, value in args.header or []:
         message.add_header(key, value)
-
-    message.set_body_text(body, args.encoding)
 
     from email.generator import Generator
     policy = email.message.compat32
