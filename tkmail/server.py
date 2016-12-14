@@ -7,12 +7,17 @@ import datetime
 import textwrap
 import itertools
 import traceback
+from collections import namedtuple
 
 import email.header
 
 from emailtunnel import SMTPForwarder, Message, InvalidRecipient
 
 import tkmail.address
+
+
+RecipientGroup = namedtuple(
+    'RecipientGroup', 'origin recipients'.split())
 
 
 def now_string():
@@ -182,21 +187,19 @@ class TKForwarder(SMTPForwarder):
             raise InvalidRecipient(rcptto)
         recipients.sort(key=lambda r: origin[r])
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
-        groups = [(o, frozenset(group))
+        groups = [RecipientGroup(origin=o, recipients=frozenset(group))
                   for o, group in group_iter]
         return groups
 
     def get_group_recipients(self, group):
-        origin, recipients = group
-        return recipients
+        return group.recipients
 
     def get_envelope_mailfrom(self, envelope, recipients=None):
         return 'admin@TAAGEKAMMERET.dk'
 
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
-        origin, recipients = group
-        list_name = origin.lower()
+        list_name = group.origin.lower()
         list_id = '%s.TAAGEKAMMERET.dk' % list_name
         unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
         help = '<mailto:%s?subject=list-help>' % (sender,)
