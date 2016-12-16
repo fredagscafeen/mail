@@ -562,6 +562,7 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
 
         else:
             original_envelope = envelope
+            already_sent = set()
             for group in recipients:
                 envelope = copy.deepcopy(original_envelope)
                 mailfrom = self.get_envelope_mailfrom(
@@ -574,6 +575,13 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
 
                 # Remove duplicates
                 group_recipients = set(group_recipients)
+                # Remove recipients already sent to
+                group_recipients -= already_sent
+                if not group_recipients:
+                    continue
+                # Store new recipients
+                already_sent |= group_recipients
+                # Sort recipients for deterministic handling
                 group_recipients = sorted(group_recipients)
 
                 self._add_extra_headers(envelope, group)
