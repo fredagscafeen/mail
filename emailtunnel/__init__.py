@@ -442,11 +442,6 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
         if invalid:
             raise InvalidRecipient(invalid)
 
-        # Remove falsy addresses (empty or None)
-        recipients = [addy for addy in recipients if addy]
-        # Remove duplicates
-        recipients = sorted(set(recipients))
-
         return recipients
 
     def translate_recipient(self, rcptto):
@@ -547,8 +542,15 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
 
             return '550 Requested action not taken: mailbox unavailable'
 
+        # Remove falsy recipients (empty string or None)
+        recipients = [r for r in recipients if r]
+
         if all(isinstance(r, str) for r in recipients):
             # No extra data; forward the envelope in one delivery
+
+            # Remove duplicates
+            recipients = sorted(set(recipients))
+
             mailfrom = self.get_envelope_mailfrom(envelope)
 
             received = self._get_envelope_received_header(envelope, peer)
@@ -569,5 +571,9 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                 if received is not None:
                     envelope.message.add_received_line(received)
                 group_recipients = self.get_group_recipients(group)
+
+                # Remove duplicates
+                group_recipients = sorted(set(group_recipients))
+
                 self._add_extra_headers(envelope, group)
                 self.deliver(envelope.message, group_recipients, mailfrom)
