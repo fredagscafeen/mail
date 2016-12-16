@@ -423,6 +423,14 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
         sorts the result, filters out empty addresses and duplicates.
         """
 
+        # TODO: Handle rcpttos in the same order as the message To, Cc, (Bcc)
+        # headers. If a message is sent To: foobar, Cc: all, where "foobar"
+        # is a recipient which is part of "all" recipients, then the
+        # To:-recipient is more important than the Cc:-recipient.
+        # The order matters if translate_recipient returns a group object
+        # rather than a simple list of email addresses since handle_envelope
+        # doesn't forward a message multiple times to the same recipient.
+
         invalid = []
         recipients = []
         for rcptto in envelope.rcpttos:
