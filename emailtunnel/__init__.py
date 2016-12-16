@@ -573,7 +573,8 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                 group_recipients = self.get_group_recipients(group)
 
                 # Remove duplicates
-                group_recipients = sorted(set(group_recipients))
+                group_recipients = set(group_recipients)
+                group_recipients = sorted(group_recipients)
 
                 self._add_extra_headers(envelope, group)
                 self.deliver(envelope.message, group_recipients, mailfrom)
