@@ -337,7 +337,7 @@ def main():
             e = test_envelopes[test_id]
             test.check_envelopes(e)
         except AssertionError as e:
-            logging.error("Test %s failed: %s" % (i, e))
+            logging.exception("Test %s failed: %s" % (i, e))
         else:
             logging.info("Test %s succeeded" % i)
 
