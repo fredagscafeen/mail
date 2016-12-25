@@ -24,6 +24,24 @@ def deliver_local(message, recipients, sender):
     envelopes.append(envelope)
 
 
+def store_failed_local(envelope, description, summary):
+    logging.info("Absorb call to store_failed_envelope")
+
+    # The method as_bytes is called in the real implementation;
+    # when testing, ensure that it wouldn't raise an exception.
+    _b = envelope.message.as_bytes()
+
+    metadata = {
+        'mailfrom': envelope.mailfrom,
+        'rcpttos': envelope.rcpttos,
+        'subject': str(envelope.message.subject),
+        'date': envelope.message.get_header('Date'),
+        'summary': summary,
+    }
+    print("Description: %r" % (description,))
+    print("metadata =\n%s" % (metadata,))
+
+
 class DumpReceiver(SMTPReceiver):
     def handle_envelope(self, envelope):
         envelopes.append(envelope)
@@ -251,6 +269,7 @@ def main():
                           year=2016)
     # dumper = DumpReceiver('127.0.0.1', dumper_port)
     relayer.deliver = deliver_local
+    relayer.store_failed_envelope = store_failed_local
 
     poller = threading.Thread(
         target=asyncore.loop,
