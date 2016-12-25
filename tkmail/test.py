@@ -253,9 +253,7 @@ class ListHeaderTest(object):
                 v2 = m2.get_unique_header(h)
             except KeyError as e:
                 raise AssertionError('No %s in message' % h) from e
-            n_best = ('best' in v1.lower()) + ('best' in v2.lower())
-            n_fu = ('fu' in v1.lower()) + ('fu' in v2.lower())
-            assert n_best == n_fu == 0 or n_best == n_fu == 1
+            assert ('bestfu' in v1.lower()) == ('bestfu' in v2.lower())
 
     def get_test_id(self):
         return str(id(self))

@@ -161,7 +161,7 @@ def parse_alias_bestfu_group(alias, db, current_period):
                          db.get_bestfu_members('FU', period))
         else:
             f = lambda: db.get_bestfu_members(kind, period)
-        return f, PeriodAlias(kind, period, root=None)
+        return f, PeriodAlias('BESTFU', period, root=None)
     return None, None
 
 
@@ -193,7 +193,7 @@ def parse_alias_bestfu_single(alias, db, current_period):
                 letter1_int = letter_map.get(letter1, letter1)
                 letter2_int = letter_map.get(letter2, letter2)
                 root = fu_kind + letter1_int + letter2_int
-            source = PeriodAlias(kind, period, root)
+            source = PeriodAlias('BESTFU', period, root)
             return (lambda: db.get_user_by_title(root, period)), source
     return None, None
 
