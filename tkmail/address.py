@@ -7,10 +7,15 @@ from emailtunnel import InvalidRecipient
 import tkmail.database
 from tkmail.config import ADMINS
 
+import tktitler as tk
+
 
 GroupAliasBase = namedtuple('GroupAlias', 'name'.split())
 PeriodAliasBase = namedtuple('PeriodAlias', 'kind period'.split())
 DirectAliasBase = namedtuple('DirectAlias', 'pk'.split())
+
+
+BEST = 'CERM FORM INKA KASS NF PR SEKR VC'.split()
 
 
 class GroupAlias(GroupAliasBase):
@@ -161,57 +166,22 @@ def parse_alias_group(alias, db, current_period):
     return None, None
 
 
-def parse_alias_bestfu_group(alias, db, current_period):
-    anciprefix = r"(?P<pre>(?:[KGBOT][KGBOT0-9]*)?)"
-    ancipostfix = r"(?P<post>(?:[0-9]{2}|[0-9]{4})?)"
-    pattern = '^%s(?P<kind>BEST|FU|BESTFU)%s$' % (anciprefix, ancipostfix)
-    mo = re.match(pattern, alias)
-    if mo is not None:
-        period = get_period(
-            mo.group("pre"),
-            mo.group("post"),
-            current_period)
-        kind = mo.group('kind')
-        if kind == 'BESTFU':
-            f = lambda: (db.get_bestfu_members('BEST', period) +
-                         db.get_bestfu_members('FU', period))
-        else:
-            f = lambda: db.get_bestfu_members(kind, period)
-        return f, PeriodAlias('BESTFU', period)
-    return None, None
+def parse_alias_title(alias, db, current_period):
+    base, period = tk.parse(alias, current_period)
+    if base == 'BESTFU':
+        def f():
+            return (db.get_bestfu_members('BEST', period) +
+                    db.get_bestfu_members('FU', period))
+    elif base in ('BEST', 'FU'):
+        def f():
+            return db.get_bestfu_members(base, period)
+    elif base in BEST or re.match(r'^E?FU[A-ZÆØÅ]{2}$', base):
+        def f():
+            return db.get_user_by_title(base, period)
+    else:
+        return None, None
 
-
-def parse_alias_bestfu_single(alias, db, current_period):
-    anciprefix = r"(?P<pre>(?:[KGBOT][KGBOT0-9]*)?)"
-    ancipostfix = r"(?P<post>(?:[0-9]{2}|[0-9]{4})?)"
-    letter = '[A-Z]|Æ|Ø|Å|AE|OE|AA'
-    letter_map = dict(AE='Æ', OE='Ø', AA='Å')
-    title_patterns = [
-        ('BEST', 'CERM|FORM|INKA|KASS|NF|PR|SEKR|VC'),
-        ('FU', '(?P<a>E?FU)(?P<b>%s)(?P<c>%s)' % (letter, letter)),
-    ]
-
-    for kind, p in title_patterns:
-        pattern = '^%s(?P<root>%s)%s$' % (anciprefix, p, ancipostfix)
-        mo = re.match(pattern, alias)
-        if mo is not None:
-            period = get_period(
-                mo.group("pre"),
-                mo.group("post"),
-                current_period)
-            root = mo.group('root')
-            if kind == 'FU':
-                fu_kind = mo.group('a')
-                letter1 = mo.group('b')
-                letter2 = mo.group('c')
-                assert root == fu_kind + letter1 + letter2
-                # Translate AE OE AA
-                letter1_int = letter_map.get(letter1, letter1)
-                letter2_int = letter_map.get(letter2, letter2)
-                root = fu_kind + letter1_int + letter2_int
-            source = PeriodAlias('BESTFU', period)
-            return (lambda: db.get_user_by_title(root, period)), source
-    return None, None
+    return f, PeriodAlias('BESTFU', period)
 
 
 def parse_alias_direct_user(alias, db, current_period):
@@ -231,8 +201,7 @@ def parse_alias(alias, db, current_period):
     # Try these functions until one matches
     matchers = [
         parse_alias_group,
-        parse_alias_bestfu_group,
-        parse_alias_bestfu_single,
+        parse_alias_title,
         parse_alias_direct_user,
     ]
 
