@@ -119,6 +119,8 @@ def parse_recipient(recipient, db, current_period):
                 origin.pop(p, None)
 
     recipient_ids = sorted(recipient_ids)
+    if not recipient_ids:
+        raise InvalidRecipient(recipient)
     return recipient_ids, [origin[r] for r in recipient_ids]
 
 
