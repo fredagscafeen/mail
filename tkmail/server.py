@@ -190,10 +190,7 @@ class TKForwarder(SMTPForwarder):
         if not recipients:
             logging.info("%s resolved to the empty list", name)
             raise InvalidRecipient(rcptto)
-        if any(origin[r] is None for r in recipients):
-            logging.warning('Some recipients have invalid origin: %r',
-                            origin)
-        recipients.sort(key=lambda r: (origin[r] is None, origin[r]))
+        recipients.sort(key=lambda r: origin[r])
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
         groups = [RecipientGroup(origin=o, recipients=frozenset(group))
                   for o, group in group_iter]
@@ -206,9 +203,6 @@ class TKForwarder(SMTPForwarder):
         return 'admin@TAAGEKAMMERET.dk'
 
     def get_extra_headers(self, envelope, group):
-        if group.origin is None:
-            logging.warning('get_extra_headers: group is None, group = %r',
-                            group)
         sender = self.get_envelope_mailfrom(envelope)
         list_name = str(group.origin).lower()
         list_id = '%s.TAAGEKAMMERET.dk' % list_name
