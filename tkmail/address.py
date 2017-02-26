@@ -99,6 +99,9 @@ def parse_recipient(recipient, db, current_period):
     for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
         try:
             personIds, source = parse_alias(name, db, current_period)
+            if source is None:
+                logging.warning('parse_alias(%r, %r) returned (%r, %r)',
+                                name, current_period, personIds, source)
             personIdOps.append((sign or '+', personIds, source))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
