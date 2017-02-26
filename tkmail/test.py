@@ -284,7 +284,7 @@ def main():
         MultipleRecipientTest('engineering'),
         MultipleRecipientTest('revy+revyteknik'),
         MultipleRecipientTest('tke'),
-        MultipleRecipientTest('vc15+nf15+kass15+cerm15+inka15+sekr15+fu15'),
+        MultipleRecipientTest('form+fu'),
         SubjectRewriteTest('=?UTF-8?Q?Gl=C3=A6delig_jul?='),
         SubjectRewriteTest('=?UTF-8?Q?Re=3A_=5BTK=5D_Gl=C3=A6delig_jul?='),
         # Invalid encoding a; should be skipped by ecre in email.header
