@@ -235,7 +235,7 @@ class ListHeaderTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'list-header-test@localhost',
-             '-T', 'FORM13+FUUS13@TAAGEKAMMERET.dk',
+             '-T', 'FORM13+FUVE15@TAAGEKAMMERET.dk',
              '-I', 'X-test-id', self.get_test_id())
         ]
 
