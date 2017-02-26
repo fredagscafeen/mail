@@ -193,7 +193,7 @@ class TKForwarder(SMTPForwarder):
         if any(origin[r] is None for r in recipients):
             logging.warning('Some recipients have invalid origin: %r',
                             origin)
-        recipients.sort(key=lambda r: origin[r])
+        recipients.sort(key=lambda r: (origin[r] is None, origin[r]))
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
         groups = [RecipientGroup(origin=o, recipients=frozenset(group))
                   for o, group in group_iter]
