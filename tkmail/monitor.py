@@ -8,7 +8,12 @@ import textwrap
 import smtplib
 
 from emailtunnel import Message
-import tkmail.address
+
+try:
+    from tkmail.address import get_admin_emails
+except ImportError:
+    print("Cannot import tkmail.address; stubbing out get_admin_emails")
+    get_admin_emails = lambda: ['mathiasrav@gmail.com']
 
 
 MAX_SIZE = 10
@@ -46,7 +51,7 @@ def archive_report(basename):
         filename = '%s.%s' % (basename, ext)
         try:
             os.rename('error/%s' % filename, 'errorarchive/%s' % filename)
-        except:
+        except Exception:
             logging.exception('Failed to move %s' % filename)
 
 
@@ -74,7 +79,7 @@ def main():
 
         try:
             report = get_report(basename)
-        except:
+        except Exception:
             exc_value = sys.exc_info()[1]
             logging.exception('get_report failed')
             report = {
@@ -96,7 +101,7 @@ def main():
                               age <= MAX_DAYS * 24 * 60 * 60)):
         return
 
-    admins = tkmail.address.get_admin_emails()
+    admins = get_admin_emails()
 
     # admins = ['mathiasrav@gmail.com']
 
