@@ -3,24 +3,24 @@ import re
 import email
 
 
+BY_POSTFIX = r'by pulerau\.scitechtinget\.dk \(Postfix\) '
+SMTP_ID = r'with E?SMTPS? id [+A-Za-z0-9-]+'
+FOR = r'(( |\n\t)for <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)'
+TIME = r'[A-Za-z0-9, :+]+ \(CES?T\)$'
+
+
 patterns = [
     r'^from localhost \(localhost\.localdomain \[127\.0\.0\.1\]\)\n\t' +
-    r'by pulerau\.scitechtinget\.dk \(Postfix\) ' +
-    r'with ESMTP id [0-9A-F]+' +
-    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
-    r'[A-Za-z0-9, :+]+ \(CES?T\)$',
+    BY_POSTFIX +
+    SMTP_ID + FOR + TIME,
 
     r'^from pulerau\.scitechtinget\.dk \(\[127\.0\.0\.1\]\)\n\t' +
     r'by localhost \(pulerau\.scitechtinget\.dk \[127\.0\.0\.1\]\) \(amavisd-new, port 10024\)\n\t' +
-    r'with ESMTP id [+A-Za-z0-9-]+' +
-    r'(( |\n\t)for <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
-    r'[A-Za-z0-9, :+]+ \(CES?T\)$',
+    SMTP_ID + FOR + TIME,
 
     r'^from (?P<helo_name>\S+) \((?P<name>[A-Za-z0-9_.-]+) \[(?P<ip>[0-9.]+)\]\)\n\t' +
-    r'by pulerau\.scitechtinget\.dk \(Postfix\) ' +
-    r'with E?SMTPS? id [0-9A-F]+' +
-    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
-    r'[A-Za-z0-9, :+]+ \(CES?T\)$',
+    BY_POSTFIX +
+    SMTP_ID + FOR + TIME,
 ]
 
 
