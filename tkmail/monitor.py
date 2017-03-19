@@ -2,12 +2,14 @@ import os
 import sys
 import json
 import time
+import email
 import logging
 import argparse
 import textwrap
 import smtplib
 
 from emailtunnel import Message
+from tkmail.delivery_reports import parse_delivery_report
 
 try:
     from tkmail.address import get_admin_emails
@@ -37,6 +39,16 @@ def configure_logging(use_tty):
 def get_report(basename):
     with open('error/%s.json' % basename) as fp:
         metadata = json.load(fp)
+
+    try:
+        with open('error/%s.mail' % basename, 'rb') as fp:
+            message = email.message_from_binary_file(fp)
+        report = parse_delivery_report(message)
+        if report:
+            metadata['summary'] = report.notification
+            metadata['subject'] = report.message.get('Subject', '')
+    except Exception:
+        logging.exception('parse_delivery_report failed')
 
     mtime = os.stat('error/%s.txt' % basename).st_mtime
 
