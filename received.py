@@ -15,10 +15,12 @@ patterns = [
     SMTP_ID + FOR + TIME,
 
     r'^from pulerau\.scitechtinget\.dk \(\[127\.0\.0\.1\]\)\n\t' +
-    r'by localhost \(pulerau\.scitechtinget\.dk \[127\.0\.0\.1\]\) \(amavisd-new, port 10024\)\n\t' +
+    r'by localhost \(pulerau\.scitechtinget\.dk \[127\.0\.0\.1\]\) ' +
+    r'\(amavisd-new, port 10024\)\n\t' +
     SMTP_ID + FOR + TIME,
 
-    r'^from (?P<helo_name>\S+) \((?P<name>[A-Za-z0-9_.-]+) \[(?P<ip>[0-9.]+)\]\)\n\t' +
+    r'^from (?P<helo_name>\S+) ' +
+    r'\((?P<name>[A-Za-z0-9_.-]+) \[(?P<ip>[0-9.]+)\]\)\n\t' +
     BY_POSTFIX +
     SMTP_ID + FOR + TIME,
 ]
