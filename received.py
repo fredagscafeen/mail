@@ -5,16 +5,22 @@ import email
 
 patterns = [
     r'^from localhost \(localhost\.localdomain \[127\.0\.0\.1\]\)\n\t' +
-    r'by pulerau\.scitechtinget\.dk \(Postfix\) with ESMTP id [0-9A-F]+' +
-    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)[A-Za-z0-9, :+]+ \(CES?T\)$',
+    r'by pulerau\.scitechtinget\.dk \(Postfix\) ' +
+    r'with ESMTP id [0-9A-F]+' +
+    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
+    r'[A-Za-z0-9, :+]+ \(CES?T\)$',
+
     r'^from pulerau\.scitechtinget\.dk \(\[127\.0\.0\.1\]\)\n\t' +
     r'by localhost \(pulerau\.scitechtinget\.dk \[127\.0\.0\.1\]\) \(amavisd-new, port 10024\)\n\t' +
-    r'with ESMTP id [+A-Za-z0-9-]+(( |\n\t)for <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
+    r'with ESMTP id [+A-Za-z0-9-]+' +
+    r'(( |\n\t)for <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
     r'[A-Za-z0-9, :+]+ \(CES?T\)$',
-    r'^from (?P<helo_name>\S+) \((?P<name>[A-Za-z0-9_.-]+) \[(?P<ip>[0-9.]+)\]\)\n\t' +
-    r'by pulerau\.scitechtinget\.dk \(Postfix\) with E?SMTPS? id [0-9A-F]+' +
-    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)[A-Za-z0-9, :+]+ \(CES?T\)$',
 
+    r'^from (?P<helo_name>\S+) \((?P<name>[A-Za-z0-9_.-]+) \[(?P<ip>[0-9.]+)\]\)\n\t' +
+    r'by pulerau\.scitechtinget\.dk \(Postfix\) ' +
+    r'with E?SMTPS? id [0-9A-F]+' +
+    r'(\n\tfor <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)' +
+    r'[A-Za-z0-9, :+]+ \(CES?T\)$',
 ]
 
 
