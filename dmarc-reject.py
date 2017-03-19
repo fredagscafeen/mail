@@ -1,10 +1,9 @@
 import os
-import re
 import email
 
+from tkmail.delivery_reports import email_delivery_reports
 
-REPORT_FROM = 'MAILER-DAEMON@pulerau.scitechtinget.dk (Mail Delivery System)'
-MIME_REPORT = 'multipart/report; report-type=delivery-status'
+
 counter = {'Apple<appleid@id.apple.com>': 0,
            '"Instagram" <no-reply@mail.instagram.com>': 0,
            '<*@facebookmail.com>': 0,
@@ -14,35 +13,9 @@ counter = {'Apple<appleid@id.apple.com>': 0,
 
 real_emails = 0
 
-for f in sorted(os.listdir('errorarchive')):
-    if not f.endswith('.mail'):
-        continue
-    with open('errorarchive/%s' % f, 'rb') as fp:
-        message = email.message_from_binary_file(fp)
-    if not message.get('Content-Type', '').startswith(MIME_REPORT):
-        continue
-    if message.get('From') != REPORT_FROM:
-        continue
-    assert message.is_multipart()
-    payloads = {pl.get('Content-Description'): pl for pl in message.get_payload()}
-    try:
-        headers = payloads.pop('Undelivered Message Headers')
-        assert payloads.setdefault('Undelivered Message', headers) is headers
-    except KeyError:
-        pass
-    payloads.pop('Delivery report', None)
-    payloads.pop('Delivery error report', None)
-    assert set(payloads.keys()) == set(['Notification', 'Undelivered Message']), payloads
-    notification = payloads['Notification']
-    assert not notification.is_multipart()
-    notification = notification.get_payload()
-    if 'DMARC' in notification:
-        undelivered = payloads['Undelivered Message']
-        pl = undelivered.get_payload()
-        if isinstance(pl, list):
-            undelivered_message, = pl
-        else:
-            undelivered_message = email.message_from_string(pl)
+for base, report in email_delivery_reports():
+    if 'DMARC' in report.notification:
+        undelivered_message = report.message
         from_ = undelivered_message['From']
         if from_.endswith('@facebookmail.com>'):
             counter['<*@facebookmail.com>'] += 1
@@ -58,7 +31,7 @@ for f in sorted(os.listdir('errorarchive')):
             else:
                 continue
         real_emails += 1
-        print(real_emails, f)
+        print(real_emails, base)
         for k, v in undelivered_message.items():
             if k.lower() in ('return-path', 'received') or k.startswith('List-'):
                 continue
