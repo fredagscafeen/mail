@@ -6,6 +6,9 @@ from tkmail.delivery_reports import email_delivery_reports
 
 counter = {'Apple<appleid@id.apple.com>': 0,
            '"Instagram" <no-reply@mail.instagram.com>': 0,
+           'Google <no-reply@accounts.google.com>': 0,
+           'Nykredit <komm@mail.nykredit.dk>': 0,
+           'Nykredit <kundeservice@erhverv.nykredit.dk>': 0,
            '<*@facebookmail.com>': 0,
            'Apple<appleid_dkda@email.apple.com>': 0,
            '<*@linkedin.com>': 0}
