@@ -12,13 +12,13 @@ EmailDeliveryReport = collections.namedtuple(
 standard_responses = {
     'google.com': [
         # 539 occurrences from 2015-01-29 to 2017-03-18
-        ('421-4.7.0', 'Unusual rate of spam',
+        ('421-4.7.0', 'Rate limited',
          'Our system has detected an unusual rate of unsolicited mail ' +
          'originating from your IP address. To protect our users from spam, ' +
          'mail sent from your IP address has been temporarily rate ' +
          'limited.'),
         # 42 occurrences from 2015-01-29 to 2017-03-18
-        ('421-4.7.0', '421 looks like spam',
+        ('421-4.7.0', 'Blocked due to spam content/links',
          'Our system has detected that this message is suspicious due to ' +
          'the nature of the content and/or the links within. To best ' +
          'protect our users from spam, the message has been blocked.'),
@@ -30,7 +30,7 @@ standard_responses = {
         ('550-5.7.1', 'DMARC failure',
          "is not accepted due to domain's DMARC policy."),
         # 4 occurrences from 2015-01-29 to 2017-03-18
-        ('550-5.7.1', '550 looks like spam',
+        ('550-5.7.1', 'Blocked due to spam content/links',
          'Our system has detected that this message is likely unsolicited ' +
          'mail. To reduce the amount of spam sent to Gmail, this message ' +
          'has been blocked.'),
@@ -42,7 +42,7 @@ standard_responses = {
     ],
     'hotmail.com': [
         # 87 occurrences from 2015-01-29 to 2017-03-18
-        ('550 5.7.0', 'Domain owner policy restrictions',
+        ('550 5.7.0', 'DMARC failure',
          'could not be delivered due to domain owner policy ' +
          'restrictions.'),
         # 2 occurrences from 2015-01-29 to 2017-03-18
@@ -74,6 +74,7 @@ standard_responses = {
          'Requested action not taken: mailbox unavailable (in reply to end ' +
          'of DATA command)'),
     ],
+    # This empty entry makes mail from *.one.com appear as just one.com in logs
     'one.com': [],
 }
 
