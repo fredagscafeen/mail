@@ -83,26 +83,21 @@ prefixes = {}
 postfixes = {}
 
 
-def longest_common_prefix(x, y):
-    def f():
-        for a, b in zip(x, y):
-            if a == b:
-                yield a
-            else:
-                return
+def iter_common_prefix(x, y):
+    for a, b in zip(x, y):
+        if a == b:
+            yield a
+        else:
+            return
 
-    return ''.join(f())
+
+def longest_common_prefix(x, y):
+    return ''.join(iter_common_prefix(x, y))
 
 
 def longest_common_postfix(x, y):
-    def f():
-        for a, b in zip(reversed(x), reversed(y)):
-            if a == b:
-                yield a
-            else:
-                return
-
-    return ''.join(reversed(list(f())))
+    common_postfix_reversed = iter_common_prefix(reversed(x), reversed(y))
+    return ''.join(reversed(list(common_postfix_reversed)))
 
 
 stats = collections.Counter()
