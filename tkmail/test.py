@@ -143,6 +143,51 @@ class SubjectRewriteTest(object):
         return str(id(self))
 
 
+class NoSubjectRewriteTest(object):
+    '''
+    Test that emails from yahoo.com do not have subjects rewritten.
+    '''
+
+    def __init__(self, subject):
+        self.subject = subject
+
+    def get_envelopes(self):
+        return [
+            ('-F', 'mathias.rav@yahoo.com',
+             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-s', self.subject,
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
+        message = envelopes[0].message
+
+        try:
+            output_subject_raw = message.get_unique_header('Subject')
+        except KeyError as e:
+            raise AssertionError('No Subject in message') from e
+
+        input_header = email.header.make_header(
+            email.header.decode_header(self.subject))
+
+        input_subject = str(input_header)
+        output_subject = str(message.subject)
+        expected_subject = input_subject
+
+        if output_subject != expected_subject:
+            raise AssertionError(
+                'Bad subject: %r == %r turned into %r == %r, '
+                'expected %r' % (self.subject, input_subject,
+                                 output_subject_raw, output_subject,
+                                 expected_subject))
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 class RejectSubjectTest(object):
     def __init__(self, subject):
         self.subject = subject
@@ -287,6 +332,7 @@ def main():
         MultipleRecipientTest('form+fu'),
         SubjectRewriteTest('=?UTF-8?Q?Gl=C3=A6delig_jul?='),
         SubjectRewriteTest('=?UTF-8?Q?Re=3A_=5BTK=5D_Gl=C3=A6delig_jul?='),
+        NoSubjectRewriteTest('Test'),
         # Invalid encoding a; should be skipped by ecre in email.header
         ErroneousSubjectTest('=?UTF-8?a?hello_world?='),
         # Invalid base64 data; email.header raises an exception

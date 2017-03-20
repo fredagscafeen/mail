@@ -19,6 +19,7 @@ from tkmail.address import (
     GroupAlias,
     # PeriodAlias, DirectAlias,
 )
+from tkmail.dmarc import has_strict_dmarc_policy
 
 
 RecipientGroup = namedtuple(
@@ -172,6 +173,15 @@ class TKForwarder(SMTPForwarder):
         if '[TK' in subject_decoded:
             # No change
             return None
+
+        from_domain_mo = re.search(r'@([^ \t\n>]+)',
+                                   envelope.message.get_header('From', ''))
+        if from_domain_mo:
+            from_domain = from_domain_mo.group(1)
+            if has_strict_dmarc_policy(from_domain):
+                logging.info('Not rewriting subject on email from %r',
+                             envelope.message.get_header('From'))
+                return None
 
         try:
             chunks = subject._chunks
