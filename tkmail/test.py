@@ -152,11 +152,14 @@ class NoSubjectRewriteTest(object):
         self.subject = subject
 
     def get_envelopes(self):
+        from_address = 'mathias.rav@yahoo.com'
         return [
-            ('-F', 'mathias.rav@yahoo.com',
+            ('-F', from_address,
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-s', self.subject,
-             '-I', 'X-test-id', self.get_test_id())
+             '-I', 'X-test-id', self.get_test_id(),
+             '-I', 'From', from_address,
+            )
         ]
 
     def check_envelopes(self, envelopes):
