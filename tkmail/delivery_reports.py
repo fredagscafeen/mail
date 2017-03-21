@@ -6,73 +6,72 @@ import itertools
 
 
 EmailDeliveryReport = collections.namedtuple(
-    'EmailDeliveryReport', 'notification message')
+    'EmailDeliveryReport', 'notification message recipients')
 
 
 standard_responses = {
     'google.com': [
         # 539 occurrences from 2015-01-29 to 2017-03-18
-        ('421-4.7.0', 'Rate limited',
+        ('4.7.0', 'Rate limited',
          'Our system has detected an unusual rate of unsolicited mail ' +
          'originating from your IP address. To protect our users from spam, ' +
          'mail sent from your IP address has been temporarily rate ' +
          'limited.'),
         # 42 occurrences from 2015-01-29 to 2017-03-18
-        ('421-4.7.0', 'Blocked due to spam content/links',
+        ('4.7.0', 'Blocked due to spam content/links',
          'Our system has detected that this message is suspicious due to ' +
          'the nature of the content and/or the links within. To best ' +
          'protect our users from spam, the message has been blocked.'),
         # 209 occurrences from 2015-01-29 to 2017-03-18
-        ('552-5.7.0', 'Attachment virus',
+        ('5.7.0', 'Attachment virus',
          'This message was blocked because its content presents a potential ' +
          'security issue.'),
         # 91 occurrences from 2015-01-29 to 2017-03-18
-        ('550-5.7.1', 'DMARC failure',
+        ('5.7.1', 'DMARC failure',
          "is not accepted due to domain's DMARC policy."),
         # 4 occurrences from 2015-01-29 to 2017-03-18
-        ('550-5.7.1', 'Blocked due to spam content/links',
+        ('5.7.1', 'Blocked due to spam content/links',
          'Our system has detected that this message is likely unsolicited ' +
          'mail. To reduce the amount of spam sent to Gmail, this message ' +
          'has been blocked.'),
         # 29 occurrences from 2015-01-29 to 2017-03-18
-        ('550-5.1.1', 'No such user',
+        ('5.1.1', 'No such user',
          "The email account that you tried to reach does not exist. Please " +
          "try double-checking the recipient's email address for typos or " +
          "unnecessary spaces."),
     ],
     'hotmail.com': [
         # 87 occurrences from 2015-01-29 to 2017-03-18
-        ('550 5.7.0', 'DMARC failure',
+        ('5.7.0', 'DMARC failure',
          'could not be delivered due to domain owner policy ' +
          'restrictions.'),
         # 2 occurrences from 2015-01-29 to 2017-03-18
-        ('550 5.7.0', 'Not RFC 5322',
+        ('5.7.0', 'Not RFC 5322',
          'Message could not be delivered. Please ensure the message is RFC ' +
          '5322 compliant.'),
         # 360 occurrences from 2015-01-29 to 2017-03-18
-        ('550', 'IP blocked',
+        ('5.0.0', 'IP blocked',
          'Please contact your Internet service provider since part of their ' +
          'network is on our block list.'),
         # 126 occurrences from 2015-01-29 to 2017-03-18
-        ('550', 'Mailbox unavailable',
+        ('5.0.0', 'Mailbox unavailable',
          'Requested action not taken: mailbox unavailable'),
     ],
     'yahoodns.net': [
         # 5 occurrences from 2015-01-29 to 2017-03-18
-        ('554 5.7.9', 'DMARC failure',
+        ('5.7.9', 'DMARC failure',
          'Message not accepted for policy reasons. See ' +
          'https://help.yahoo.com/kb/postmaster/SLN7253.html'),
     ],
     'sitnet.dk': [
         # 28 occurrences from 2015-01-29 to 2017-03-18
-        ('550 5.7.1', 'Content rejected',
+        ('5.7.1', 'Content rejected',
          'Error: content rejected / indhold afvist'),
     ],
     '127.0.0.1': [
         # 196 occurrences from 2015-01-29 to 2017-03-18
-        ('550', 'Emailtunnel 550',
-         'Requested action not taken: mailbox unavailable (in reply to end ' +
-         'of DATA command)'),
+        ('5.0.0', 'Emailtunnel 550',
+         'Requested action not taken: mailbox unavailable'),
     ],
     # This empty entry makes mail from *.one.com appear as just one.com in logs
     'one.com': [],
@@ -142,69 +141,101 @@ def abbreviate_recipients(recipients):
         return ', '.join('<%s>' % x for x in recipients)
 
 
-def parse_recipient_error(message):
-    pattern = (
-        r'^host (?P<hostname>[^ []+)\[(?P<hostip>[^] ]+)\] said: ' +
-        r'(?P<code>\d+(?:[- ][0-9.]+)?) (?P<rest>.*)')
-    mo = re.match(pattern, message)
-    if not mo:
-        # record_stats(None, None, None, None, message)
-        return message
+def abbreviate_diagnostic_message(remote_mta, status, message):
+    code = message[:3]
 
-    actual_host = mo.group('hostname')
-    code = mo.group('code')
-    rest = mo.group('rest')
-
-    if actual_host.endswith('.google.com'):
-        # For some reason errors from Google repeat the code inside the message
-        # at unpredictable positions (determined from line breaks before
-        # Postfix's rewrapping of the message), so we just remove them.
-        rest = rest.replace(code + ' ', '')
-        rest = rest.replace(code.replace('-', ' ') + ' ', '')
+    # Remove leading "550" and any occurrence of e.g. "421-4.7.0" inside
+    # the diagnostic message. Google in particular repeats the status
+    # and code multiple times; others just have it in the beginning.
+    message = re.sub('^%s |%s[- ]%s ' % (code, code, status), '', message)
 
     for host, rules in standard_responses.items():
-        if actual_host == host or actual_host.endswith('.' + host):
-            for code_, summary, needle in rules:
-                if code == code_ and needle in rest:
-                    # record_stats(host, code, summary, needle, rest)
-                    return '%s (%s from %s)' % (summary, code, host)
+        if remote_mta == host or remote_mta.endswith('.' + host):
+            for status_, summary, needle in rules:
+                if status == status_ and needle in message:
+                    # record_stats(host, status, summary, needle, message)
+                    return '%s (%s-%s from %s)' % (summary, code, status, host)
 
             if host == 'one.com':
-                rest = re.sub(' \([0-9a-f-]+\) \(in reply.*', '', rest)
+                message = re.sub(' \([0-9a-f-]+\)$', '', message)
 
-            # record_stats(host, code, None, None, rest)
-            return '"%s" (%s from %s)' % (rest, code, host)
-    # record_stats(actual_host, code, None, None, rest)
-    return message
+            # record_stats(host, status, None, None, message)
+            return '%s (%s-%s from %s)' % (message, code, status, host)
+    # record_stats(remote_mta, code, None, None, message)
+
+    return '%s (%s-%s from %s)' % (message, code, status, remote_mta)
 
 
-def parse_notification(message):
-    paragraphs = re.split(r'\n\n+', message.strip('\n'))
-    paragraphs = [re.sub(r'\s+', ' ', p.strip()) for p in paragraphs]
+RecipientStatus = collections.namedtuple(
+    'RecipientStatus',
+    'recipient action status diagnostic_code remote_mta will_retry')
 
-    individual_error = '^<([^>]*)>:\s*(.*)$'
-    friendly_paragraphs = []
-    recipients = {}
-    for orig_paragraph in paragraphs:
-        paragraph = re.sub(r'\s+', ' ', orig_paragraph.strip())
-        mo = re.match(individual_error, paragraph)
-        if mo:
-            rcpt, message = mo.groups()
-            recipients.setdefault(
-                parse_recipient_error(message), []).append(rcpt)
+
+def parse_report_message(report_message):
+    if report_message.get_content_type() != 'message/delivery-status':
+        raise Exception()
+    report_desc = report_message.get('Content-Description')
+    if report_desc not in ('Delivery report', 'Delivery error report'):
+        raise Exception()
+    if not report_message.is_multipart():
+        raise Exception()
+    message_status = report_message.get_payload()[0]
+    recipients_fields = report_message.get_payload()[1:]
+
+    reporting_mta_field = message_status.get('Reporting-MTA') or ''
+    if not reporting_mta_field.startswith('dns;'):
+        raise Exception()
+    reporting_mta = reporting_mta_field.split(';', 1)[1].strip()
+
+    statuses = []
+    for recipient_fields in recipients_fields:
+        final_recipient_field = recipient_fields.get('Final-Recipient') or ''
+        if not final_recipient_field.startswith('rfc822;'):
+            raise Exception()
+        recipient = final_recipient_field.split(';', 1)[1].strip()
+
+        action = (recipient_fields.get('Action') or '').lower()
+        ACTIONS = 'failed delayed delivered relayed expanded'.split()
+        if action not in ACTIONS:
+            raise Exception()
+        status = recipient_fields.get('Status') or ''
+        if status[:2] not in ('2.', '4.', '5.'):
+            raise Exception()
+        remote_mta_field = recipient_fields.get('Remote-MTA')
+        if remote_mta_field is None:
+            remote_mta = None
         else:
-            friendly_paragraphs.append(orig_paragraph)
-    friendly_text = '\n\n'.join(friendly_paragraphs)
-    retried = 'It will be retried until it is' in friendly_text
+            assert remote_mta_field.startswith('dns;')
+            remote_mta = remote_mta_field.split(';', 1)[1].strip()
+        diagnostic_code = recipient_fields.get('Diagnostic-Code')
+        will_retry = bool(recipient_fields.get('Will-Retry-Until'))
 
-    recipients_str = '; '.join('%s: %s' %
-                               (abbreviate_recipients(recipients),
-                                message)
-                               for message, recipients in recipients.items())
-    if retried:
-        return '%s; message will be retried' % recipients_str
-    else:
-        return recipients_str
+        statuses.append(RecipientStatus(
+            recipient, action, status, diagnostic_code, remote_mta, will_retry))
+
+    return reporting_mta, statuses
+
+
+def notification_from_report(report):
+    reporting_mta, statuses = report
+    n = {}
+    for status in statuses:
+        diagnostic_code = re.sub(r'\s+', ' ', status.diagnostic_code or '')
+        if diagnostic_code.startswith('smtp;'):
+            message = abbreviate_diagnostic_message(
+                status.remote_mta or '',
+                status.status,
+                diagnostic_code.split(';', 1)[1].strip())
+        elif ';' in diagnostic_code:
+            message = diagnostic_code.split(';', 1)[1].strip()
+        else:
+            message = diagnostic_code.status
+        if status.will_retry:
+            message += '; message will be retried'
+        n.setdefault(message, []).append(status.recipient)
+    return '; '.join(
+        '%s: %s' % (abbreviate_recipients(recipients), message)
+        for message, recipients in n.items())
 
 
 def parse_delivery_report(message):
@@ -220,24 +251,15 @@ def parse_delivery_report(message):
     report_parts = message.get_payload()
     if len(report_parts) != 3:
         raise Exception()
-    notification_message, report, undelivered_part = report_parts
-    notification_desc = notification_message.get('Content-Description')
-    if notification_desc != 'Notification':
-        raise Exception()
-    report_desc = report.get('Content-Description')
-    if report_desc not in ('Delivery report', 'Delivery error report'):
-        raise Exception()
+    notification_message, report_message, undelivered_part = report_parts
+    report = parse_report_message(report_message)
+    recipients = [r.recipient for r in report[1]]
+    notification = notification_from_report(report)
     undelivered_desc = undelivered_part.get('Content-Description')
     undelivered_descs = ('Undelivered Message',
                          'Undelivered Message Headers')
     if undelivered_desc not in undelivered_descs:
         raise Exception()
-    if notification_message.is_multipart():
-        raise Exception()
-    notification_str = notification_message.get_payload()
-    if not isinstance(notification_str, str):
-        raise Exception()
-    notification = parse_notification(notification_str)
     if undelivered_desc == 'Undelivered Message':
         if not undelivered_part.is_multipart():
             raise Exception()
@@ -253,7 +275,7 @@ def parse_delivery_report(message):
             raise Exception()
         undelivered_message = email.message_from_string(
             undelivered_part.get_payload())
-    return EmailDeliveryReport(notification, undelivered_message)
+    return EmailDeliveryReport(notification, undelivered_message, recipients)
 
 
 def email_delivery_reports():
