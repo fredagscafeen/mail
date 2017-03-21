@@ -537,10 +537,6 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
             envelope.message.set_unique_header(field, value)
 
     def handle_envelope(self, envelope, peer):
-        new_subject = self.translate_subject(envelope)
-        if new_subject is not None:
-            envelope.message.subject = new_subject
-
         try:
             recipients = self.get_envelope_recipients(envelope)
         except InvalidRecipient as exn:
@@ -549,6 +545,10 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
             self.handle_invalid_recipient(envelope, exn)
 
             return '550 Requested action not taken: mailbox unavailable'
+
+        new_subject = self.translate_subject(envelope)
+        if new_subject is not None:
+            envelope.message.subject = new_subject
 
         # Remove falsy recipients (empty string or None)
         recipients = [r for r in recipients if r]
