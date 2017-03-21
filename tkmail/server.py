@@ -32,6 +32,8 @@ def now_string():
 
 
 class TKForwarder(SMTPForwarder):
+    MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
+
     ERROR_TEMPLATE = """
     This is the mail system of TAAGEKAMMERET.
 
@@ -210,7 +212,7 @@ class TKForwarder(SMTPForwarder):
         return group.recipients
 
     def get_envelope_mailfrom(self, envelope, recipients=None):
-        return 'admin@TAAGEKAMMERET.dk'
+        return self.__class__.MAIL_FROM
 
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
