@@ -11,7 +11,7 @@ from collections import namedtuple
 
 import email.header
 
-from emailtunnel import SMTPForwarder, Message, InvalidRecipient
+from emailtunnel import SMTPForwarder, Message, InvalidRecipient, Envelope
 
 import tkmail.address
 
@@ -20,6 +20,7 @@ from tkmail.address import (
     # PeriodAlias, DirectAlias,
 )
 from tkmail.dmarc import has_strict_dmarc_policy
+from tkmail.delivery_reports import parse_delivery_report
 
 
 RecipientGroup = namedtuple(
@@ -131,6 +132,20 @@ class TKForwarder(SMTPForwarder):
         logging.info('Subject: %r To: %s',
                      str(message.subject), recipients_string)
 
+    def handle_delivery_report(self, envelope):
+        if envelope.mailfrom != '<>':
+            return
+        report = parse_delivery_report(envelope.message)
+        if not report:
+            return
+        original_mailfrom = report.message.get('Return-Path') or '(unknown)'
+        inner_envelope = Envelope(report.message, original_mailfrom,
+                                  report.recipients)
+        description = summary = report.notification
+        self.store_failed_envelope(envelope, description, summary,
+                                   inner_envelope)
+        return True
+
     def reject(self, envelope):
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
         to_admin = rcpttos == ('admin@taagekammeret.dk',)
@@ -161,7 +176,9 @@ class TKForwarder(SMTPForwarder):
         ))
 
     def handle_envelope(self, envelope, peer):
-        if self.reject(envelope):
+        if self.handle_delivery_report(envelope):
+            pass
+        elif self.reject(envelope):
             description = summary = 'Rejected due to TKForwarder.reject'
             self.store_failed_envelope(envelope, description, summary)
 
