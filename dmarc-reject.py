@@ -15,8 +15,12 @@ counter = {'Apple<appleid@id.apple.com>': 0,
 
 
 real_emails = 0
+first = True
 
 for base, report in email_delivery_reports():
+    if first:
+        print("First report is %s\n" % base)
+        first = False
     if 'DMARC' in report.notification:
         undelivered_message = report.message
         from_ = undelivered_message['From']
