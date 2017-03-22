@@ -176,7 +176,20 @@ RecipientStatus = collections.namedtuple(
 
 
 def parse_typed_field(header, key, required_type=None, required=True):
+    '''
+    Parse header.get(key) according to RFC 3464 sec. 2.1.2.
+
+    See https://tools.ietf.org/html/rfc3464#section-2.1.2
+
+    These "typed fields" contain a type, followed by a semicolon,
+    followed by free text. The type is case-insensitive.
+
+    If required_type is given, ensure that the typed field specifies the given
+    type and return the associated free text.
+    Otherwise, return a tuple of type and text.
+    '''
     if header is None or isinstance(header, str):
+        # Allow passing the header value instead of a header dict.
         value = header
     else:
         value = header.get(key)
@@ -200,36 +213,47 @@ def parse_typed_field(header, key, required_type=None, required=True):
 
 
 def parse_report_message(report_message):
+    # Parse the second component of a multipart/report, which must be
+    # of type message/delivery-status.
+    # https://tools.ietf.org/html/rfc3464#section-2.1
     if report_message.get_content_type() != 'message/delivery-status':
         raise Exception()
     message_status = report_message.get_payload()[0]
     recipients_fields = report_message.get_payload()[1:]
 
-    reporting_mta = parse_typed_field(
-        message_status, 'Reporting-MTA', 'dns')
+    # Reporting-MTA required by https://tools.ietf.org/html/rfc3464#section-2.2
+    reporting_mta = parse_typed_field(message_status, 'Reporting-MTA', 'dns')
 
-    # Used by Exch08.uni.au.dk
+    # Optional; used by Exch08.uni.au.dk instead of the optional Remote-MTA.
     received_from_mta = parse_typed_field(
         message_status, 'Received-From-MTA', 'dns', required=False)
 
     statuses = []
     for recipient_fields in recipients_fields:
         if recipient_fields.items() == []:
-            # Broken reports from Exch08.uni.au.dk
+            # Reports from Exch08.uni.au.dk contain empty subparts
             continue
+        # Required; https://tools.ietf.org/html/rfc3464#section-2.3
         recipient = parse_typed_field(
             recipient_fields, 'Final-Recipient', 'rfc822')
 
+        # Required; https://tools.ietf.org/html/rfc3464#section-2.3
         action = (recipient_fields.get('Action') or '').lower()
+        # https://tools.ietf.org/html/rfc3464#section-2.3.3
         ACTIONS = 'failed delayed delivered relayed expanded'.split()
         if action not in ACTIONS:
             raise Exception()
+        # Required; https://tools.ietf.org/html/rfc3464#section-2.3
         status = recipient_fields.get('Status') or ''
+        # https://tools.ietf.org/html/rfc3464#section-2.3.4
         if status[:2] not in ('2.', '4.', '5.'):
             raise ReportParseError('Invalid status %r' % status)
+        # Optional; used by our local Postfix
         remote_mta = parse_typed_field(
             recipient_fields, 'Remote-MTA', 'dns', required=False)
+        # https://tools.ietf.org/html/rfc3464#section-2.3.6
         diagnostic_code = recipient_fields.get('Diagnostic-Code')
+        # https://tools.ietf.org/html/rfc3464#section-2.3.9
         will_retry = bool(recipient_fields.get('Will-Retry-Until'))
 
         statuses.append(RecipientStatus(
@@ -268,18 +292,27 @@ def parse_delivery_report(message):
     header_pattern = r'List-Id: .*%s' % (re.escape(list_id_suffix),)
     header_pattern_bytes = header_pattern.encode('ascii')
 
+    # https://tools.ietf.org/html/rfc3464#section-2
     if message.get_content_type() != 'multipart/report':
         return
     if message.get_param('report-type') != 'delivery-status':
         return
+
+    # Spammers cause many bogus/invalid DSNs to be sent around.
+    # Only trust DSNs from our local postfix or DSNs containing
+    # a magic marker (List-Id) that our mail relay inserts.
     if message.get('From') != report_from:
         if not re.search(header_pattern_bytes, message.as_bytes()):
             # Probably not legitimate
             return
+
+    # A message of type multipart/report is a multipart message.
     if not message.is_multipart():
         raise Exception()
     report_parts = message.get_payload()
 
+    # The third part is allowed by RFC3464 to be omitted, but it is always
+    # present on the DSNs we are interested in parsing.
     if len(report_parts) != 3:
         ctypes = [p.get_content_type() for p in report_parts]
         raise ReportParseError(
@@ -287,6 +320,9 @@ def parse_delivery_report(message):
             (ctypes,))
     notification_message, report_message, undelivered_part = report_parts
 
+    # The Content-Type of the third part is not specified by RFC3464,
+    # but it is always message/rfc822 or text/rfc822-headers
+    # on the DSNs we are interested in parsing.
     if undelivered_part.get_content_type() == 'message/rfc822':
         if not undelivered_part.is_multipart():
             raise Exception()
