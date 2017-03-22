@@ -1,3 +1,6 @@
+import logging
+
+
 try:
     from dmarc_policy_parser import get_dmarc_policy
 except ImportError:
@@ -11,4 +14,8 @@ except ImportError:
 
 
 def has_strict_dmarc_policy(domain):
-    return get_dmarc_policy(domain) in ('reject', 'quarantine')
+    try:
+        return get_dmarc_policy(domain) in ('reject', 'quarantine')
+    except Exception:
+        logging.exception('get_dmarc_policy(%r) raised an exception', domain)
+        return False
