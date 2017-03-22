@@ -7,7 +7,7 @@ import datetime
 import textwrap
 import itertools
 import traceback
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 import email.header
 from tkmail.util import DecodingDecodedGenerator
@@ -82,7 +82,6 @@ class TKForwarder(SMTPForwarder):
 
     def log_receipt(self, peer, envelope):
         mailfrom = envelope.mailfrom
-        rcpttos = envelope.rcpttos
         message = envelope.message
 
         if type(mailfrom) == str:
@@ -90,18 +89,32 @@ class TKForwarder(SMTPForwarder):
         else:
             sender = repr(mailfrom)
 
-        if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
-            rcpttos = [re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2', x,
-                              0, re.I)
-                       for x in rcpttos]
-            if len(rcpttos) == 1:
-                recipients = '<%s>' % rcpttos[0]
+        try:
+            recipients_header = OrderedDict()
+            for address, formatted, header in envelope.recipients():
+                if address is not None:
+                    address = re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2',
+                                     address, 0, re.I)
+                    recipients_header.setdefault(header, []).append(address)
+            recipients = ' '.join(
+                '%s: <%s>' % (header, '>, <'.join(group))
+                for header, group in recipients_header.items())
+        except Exception as exn:
+            logging.exception('Envelope.recipients() processing failed')
+            rcpttos = envelope.rcpttos
+            if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
+                rcpttos = [re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2',
+                                  address, 0, re.I)
+                           for address in rcpttos]
+                if len(rcpttos) == 1:
+                    recipients = '<%s>' % rcpttos[0]
+                else:
+                    recipients = ', '.join('<%s>' % x for x in rcpttos)
             else:
-                recipients = ', '.join('<%s>' % x for x in rcpttos)
-        else:
-            recipients = repr(rcpttos)
+                recipients = repr(rcpttos)
+            recipients = 'To: ' + recipients
 
-        logging.info("Subject: %r From: %s To: %s",
+        logging.info("Subject: %r From: %s %s",
                      str(message.subject), sender, recipients)
 
     def log_delivery(self, message, recipients, sender):
