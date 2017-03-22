@@ -288,7 +288,8 @@ class TKForwarder(SMTPForwarder):
 
         self.deliver(admin_message, admin_emails, sender)
 
-    def store_failed_envelope(self, envelope, description, summary):
+    def store_failed_envelope(self, envelope, description, summary,
+                              inner_envelope=None):
         now = now_string()
 
         try:
@@ -299,20 +300,22 @@ class TKForwarder(SMTPForwarder):
         with open('error/%s.mail' % now, 'wb') as fp:
             fp.write(envelope.message.as_bytes())
 
+        if inner_envelope is None:
+            inner_envelope = envelope
         with open('error/%s.json' % now, 'w') as fp:
             metadata = {
-                'mailfrom': envelope.mailfrom,
-                'rcpttos': envelope.rcpttos,
-                'subject': str(envelope.message.subject),
-                'date': envelope.message.get_header('Date'),
+                'mailfrom': inner_envelope.mailfrom,
+                'rcpttos': inner_envelope.rcpttos,
+                'subject': str(inner_envelope.message.subject),
+                'date': inner_envelope.message.get_header('Date'),
                 'summary': summary,
             }
             json.dump(metadata, fp)
 
         with open('error/%s.txt' % now, 'w') as fp:
-            fp.write('From %s\n' % envelope.mailfrom)
-            fp.write('To %s\n\n' % envelope.rcpttos)
+            fp.write('From %s\n' % inner_envelope.mailfrom)
+            fp.write('To %s\n\n' % inner_envelope.rcpttos)
             fp.write('%s\n' % description)
 
         with open('error/%s.txt' % now, 'ab') as fp:
-            fp.write(envelope.message.as_bytes())
+            fp.write(inner_envelope.message.as_bytes())
