@@ -145,6 +145,7 @@ class TKForwarder(SMTPForwarder):
         description = summary = report.notification
         self.store_failed_envelope(envelope, description, summary,
                                    inner_envelope)
+        logging.info('%s', summary)
         return True
 
     def reject(self, envelope):
@@ -183,6 +184,7 @@ class TKForwarder(SMTPForwarder):
             pass
         elif self.reject(envelope):
             description = summary = 'Rejected due to TKForwarder.reject'
+            logging.info('%s', summary)
             self.store_failed_envelope(envelope, description, summary)
 
         else:
