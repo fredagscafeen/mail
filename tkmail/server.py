@@ -340,7 +340,7 @@ class TKForwarder(SMTPForwarder):
         with open('error/%s.txt' % now, 'a') as fp:
             try:
                 g = DecodingDecodedGenerator(fp)
-                g.flatten(inner_envelope.message)
+                g.flatten(inner_envelope.message.message)
             except Exception as exn:
                 logging.exception(
                     'Could not write message with DecodingDecodedGenerator')
