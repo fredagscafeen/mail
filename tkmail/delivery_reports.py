@@ -5,6 +5,10 @@ import collections
 import itertools
 
 
+class ReportParseError(Exception):
+    pass
+
+
 EmailDeliveryReport = collections.namedtuple(
     'EmailDeliveryReport', 'notification message recipients')
 
@@ -291,6 +295,9 @@ def email_delivery_reports():
             message = email.message_from_binary_file(fp)
         try:
             parsed = parse_delivery_report(message)
+        except ReportParseError as exn:
+            print(base, exn)
+            continue
         except Exception as exn:
             print(base, exn)
             raise
