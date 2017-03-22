@@ -30,6 +30,7 @@ import logging
 import datetime
 
 import email
+import email.utils
 import email.mime.multipart
 from email.generator import BytesGenerator
 from email.header import Header
@@ -236,6 +237,40 @@ class Envelope(object):
         self.message = message
         self.mailfrom = mailfrom
         self.rcpttos = rcpttos
+
+    def recipients(self):
+        '''
+        Returns a list of (address, name_address, header)-triples
+        where address is either an envelope recipient or None,
+        name_address is an RFC822 address specification, and header is the
+        header in which the address were found, or "Bcc" if not present.
+        If a recipient is present in both To and Cc, To takes precedence.
+        The list is sorted by header such that To comes before Cc.
+        '''
+
+        headers = 'To Resent-To Cc Resent-Cc Bcc Resent-Bcc'.split()
+        visible_recipients = {}
+        for k in headers:
+            raw_values = self.message.get_all_headers(k)
+            if not raw_values:
+                continue
+            # Paranoid header handling
+            values = [str(decode_any_header(str(v))) for v in raw_values]
+            for realname, address in email.utils.getaddresses(values):
+                # Use setdefault so that To takes precedence over Cc
+                visible_recipients.setdefault(address, (realname, k))
+
+        result = []
+        for address in self.rcpttos:
+            realname, header = visible_recipients.pop(address, ('', 'Bcc'))
+            formatted = email.utils.formataddr((realname, address))
+            result.append((address, formatted, header))
+        for address, (realname, header) in visible_recipients.items():
+            formatted = email.utils.formataddr((realname, address))
+            result.append((None, formatted, header))
+        # Sort in order of "headers".
+        result.sort(key=lambda t: headers.index(t[2]))
+        return result
 
 
 def ascii_prefix(bs):
