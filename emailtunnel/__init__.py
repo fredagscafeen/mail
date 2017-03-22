@@ -87,11 +87,11 @@ class Message(object):
 
             self.message = email.message_from_bytes(message)
 
-            if not self._sanity_check(message):
-                self._sanity_log_invalid(message)
-
         else:
             self.message = email.mime.multipart.MIMEMultipart()
+
+        if not self._sanity_check(message):
+            self._sanity_log_invalid(message)
 
     def _sanity_check(self, message):
         a = message.rstrip(b'\n')
