@@ -147,6 +147,7 @@ class TKForwarder(SMTPForwarder):
         return True
 
     def reject(self, envelope):
+        # Reject delivery status notifications not from the local postfix
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
         to_admin = rcpttos == ('admin@taagekammeret.dk',)
 
@@ -163,6 +164,7 @@ class TKForwarder(SMTPForwarder):
         ctype_report = content_type.startswith('multipart/report')
         ctype_delivery = 'report-type=delivery-status' in content_type
 
+        # Reject if a header is not encoded properly
         header_items = envelope.message.header_items()
         headers = [header for field, header in header_items]
         chunks = sum((header._chunks for header in headers), [])
