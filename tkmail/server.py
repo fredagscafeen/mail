@@ -136,11 +136,11 @@ class TKForwarder(SMTPForwarder):
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != '<>':
             return
-        report = parse_delivery_report(envelope.message)
+        report = parse_delivery_report(envelope.message.message)
         if not report:
             return
         original_mailfrom = report.message.get('Return-Path') or '(unknown)'
-        inner_envelope = Envelope(report.message, original_mailfrom,
+        inner_envelope = Envelope(Message(report.message), original_mailfrom,
                                   report.recipients)
         description = summary = report.notification
         self.store_failed_envelope(envelope, description, summary,
