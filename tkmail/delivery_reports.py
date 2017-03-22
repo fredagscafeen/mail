@@ -289,6 +289,11 @@ def email_delivery_reports():
         filepath = os.path.join(path, filename)
         with open(filepath, 'rb') as fp:
             message = email.message_from_binary_file(fp)
-        parsed = parse_delivery_report(message)
+        try:
+            parsed = parse_delivery_report(message)
+        except Exception as exn:
+            print(base, exn)
+            raise
+
         if parsed:
             yield base, parsed
