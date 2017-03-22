@@ -345,6 +345,8 @@ def parse_delivery_report(message):
 
 
 def email_delivery_reports():
+    # Helper function to parse all reports in the "errorarchive" directory
+    # in the repository.
     repo_root = os.path.abspath(
         os.path.dirname(os.path.dirname(__file__)))
     path = os.path.join(repo_root, 'errorarchive')
