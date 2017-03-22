@@ -8,7 +8,7 @@ import argparse
 import textwrap
 import smtplib
 
-from emailtunnel import Message
+from emailtunnel import Message, decode_any_header
 from tkmail.delivery_reports import parse_delivery_report
 
 try:
@@ -46,7 +46,8 @@ def get_report(basename):
         report = parse_delivery_report(message)
         if report:
             metadata['summary'] = report.notification
-            metadata['subject'] = report.message.get('Subject', '')
+            metadata['subject'] = str(decode_any_header(
+                report.message.get('Subject', '')))
     except Exception:
         logging.exception('parse_delivery_report failed')
 
