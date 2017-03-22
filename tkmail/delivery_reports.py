@@ -175,6 +175,30 @@ RecipientStatus = collections.namedtuple(
     'recipient action status diagnostic_code remote_mta will_retry')
 
 
+def parse_typed_field(header, key, required_type=None, required=True):
+    if header is None or isinstance(header, str):
+        value = header
+    else:
+        value = header.get(key)
+    if not value:
+        if required:
+            raise ReportParseError('Header %r is required' % key)
+        elif required_type:
+            return None
+        else:
+            return None, None
+    try:
+        type, text = value.split(';', 1)
+    except ValueError:
+        raise Exception()
+    if required_type is None:
+        return type.strip().lower(), text.strip()
+    elif type.strip().lower() != required_type:
+        raise ReportParseError('Expected header %r of type %r, not %r' %
+                               (key, required_type, type))
+    return text.strip()
+
+
 def parse_report_message(report_message):
     if report_message.get_content_type() != 'message/delivery-status':
         raise Exception()
@@ -186,20 +210,16 @@ def parse_report_message(report_message):
     message_status = report_message.get_payload()[0]
     recipients_fields = report_message.get_payload()[1:]
 
-    reporting_mta_field = message_status.get('Reporting-MTA') or ''
-    if not reporting_mta_field.startswith('dns;'):
-        raise Exception()
-    reporting_mta = reporting_mta_field.split(';', 1)[1].strip()
+    reporting_mta = parse_typed_field(
+        message_status, 'Reporting-MTA', 'dns')
 
     statuses = []
     for recipient_fields in recipients_fields:
         if recipient_fields.items() == []:
             # Broken reports from Exch08.uni.au.dk
             continue
-        final_recipient_field = recipient_fields.get('Final-Recipient') or ''
-        if not final_recipient_field.startswith('rfc822;'):
-            raise Exception()
-        recipient = final_recipient_field.split(';', 1)[1].strip()
+        recipient = parse_typed_field(
+            recipient_fields, 'Final-Recipient', 'rfc822')
 
         action = (recipient_fields.get('Action') or '').lower()
         ACTIONS = 'failed delayed delivered relayed expanded'.split()
@@ -208,12 +228,8 @@ def parse_report_message(report_message):
         status = recipient_fields.get('Status') or ''
         if status[:2] not in ('2.', '4.', '5.'):
             raise Exception()
-        remote_mta_field = recipient_fields.get('Remote-MTA')
-        if remote_mta_field is None:
-            remote_mta = None
-        else:
-            assert remote_mta_field.startswith('dns;')
-            remote_mta = remote_mta_field.split(';', 1)[1].strip()
+        remote_mta = parse_typed_field(
+            recipient_fields, 'Remote-MTA', 'dns', required=False)
         diagnostic_code = recipient_fields.get('Diagnostic-Code')
         will_retry = bool(recipient_fields.get('Will-Retry-Until'))
 
@@ -227,16 +243,16 @@ def notification_from_report(report):
     reporting_mta, statuses = report
     n = {}
     for status in statuses:
-        diagnostic_code = re.sub(r'\s+', ' ', status.diagnostic_code or '')
-        if diagnostic_code.startswith('smtp;'):
+        diagnostic_type, diagnostic_text = parse_typed_field(
+            re.sub(r'\s+', ' ', status.diagnostic_code or ''),
+            'status.diagnostic_code')
+        if diagnostic_type == 'smtp':
             message = abbreviate_diagnostic_message(
                 status.remote_mta or '',
                 status.status,
-                diagnostic_code.split(';', 1)[1].strip())
-        elif ';' in diagnostic_code:
-            message = diagnostic_code.split(';', 1)[1].strip()
+                diagnostic_text)
         else:
-            message = diagnostic_code.status
+            message = diagnostic_text
         if status.will_retry:
             message += '; message will be retried'
         n.setdefault(message, []).append(status.recipient)
