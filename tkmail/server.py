@@ -181,14 +181,13 @@ class TKForwarder(SMTPForwarder):
 
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
-            pass
-        elif self.reject(envelope):
+            return
+        if self.reject(envelope):
             description = summary = 'Rejected due to TKForwarder.reject'
             logging.info('%s', summary)
             self.store_failed_envelope(envelope, description, summary)
-
-        else:
-            return super(TKForwarder, self).handle_envelope(envelope, peer)
+            return
+        return super(TKForwarder, self).handle_envelope(envelope, peer)
 
     def translate_subject(self, envelope):
         subject = envelope.message.subject
