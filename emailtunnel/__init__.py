@@ -34,6 +34,7 @@ import email.mime.multipart
 from email.generator import BytesGenerator
 from email.header import Header
 from email.charset import QP
+import email.message
 
 import smtpd
 import smtplib
@@ -82,7 +83,9 @@ class InvalidRecipient(Exception):
 
 class Message(object):
     def __init__(self, message=None):
-        if message:
+        if isinstance(message, email.message.Message):
+            self.message = message
+        elif message:
             assert isinstance(message, bytes)
 
             self.message = email.message_from_bytes(message)
