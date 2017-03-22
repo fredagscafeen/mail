@@ -10,6 +10,7 @@ import traceback
 from collections import namedtuple
 
 import email.header
+from tkmail.util import DecodingDecodedGenerator
 
 from emailtunnel import SMTPForwarder, Message, InvalidRecipient, Envelope
 
@@ -336,5 +337,12 @@ class TKForwarder(SMTPForwarder):
             fp.write('To %s\n\n' % inner_envelope.rcpttos)
             fp.write('%s\n' % description)
 
-        with open('error/%s.txt' % now, 'ab') as fp:
-            fp.write(inner_envelope.message.as_bytes())
+        with open('error/%s.txt' % now, 'a') as fp:
+            try:
+                g = DecodingDecodedGenerator(fp)
+                g.flatten(inner_envelope.message)
+            except Exception as exn:
+                logging.exception(
+                    'Could not write message with DecodingDecodedGenerator')
+                fp.write('[Exception in generator; see %s.mail]\n' %
+                         now)
