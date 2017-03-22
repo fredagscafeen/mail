@@ -158,6 +158,8 @@ class TKForwarder(SMTPForwarder):
         delivery_status_subject = (
             'Delayed Mail' in subject_str or
             'Undelivered Mail Returned to Sender' in subject_str)
+        if to_admin and delivery_status_subject:
+            return 'Subject looks like a DSN'
 
         try:
             content_type = envelope.message.get_unique_header('Content-Type')
@@ -165,6 +167,8 @@ class TKForwarder(SMTPForwarder):
             content_type = ''
         ctype_report = content_type.startswith('multipart/report')
         ctype_delivery = 'report-type=delivery-status' in content_type
+        if to_admin and ctype_report and ctype_delivery:
+            return 'Content-Type looks like a DSN'
 
         # Reject if a header is not encoded properly
         header_items = envelope.message.header_items()
@@ -172,23 +176,17 @@ class TKForwarder(SMTPForwarder):
         chunks = sum((header._chunks for header in headers), [])
         any_unknown = any(charset == email.charset.UNKNOWN8BIT
                           for string, charset in chunks)
-
-        r = any((
-            to_admin and delivery_status_subject,
-            to_admin and ctype_report and ctype_delivery,
-            any_unknown,
-        ))
-        if r:
-            return 'Rejected due to TKForwarder.reject'
+        if any_unknown:
+            return 'invalid header encoding'
 
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
             return
         reject_reason = self.reject(envelope)
         if reject_reason:
-            description = summary = reject_reason
+            summary = 'Rejected by TKForwarder.reject (%s)' % reject_reason
             logging.info('%s', summary)
-            self.store_failed_envelope(envelope, description, summary)
+            self.store_failed_envelope(envelope, summary, summary)
             return
         return super(TKForwarder, self).handle_envelope(envelope, peer)
 
