@@ -173,17 +173,20 @@ class TKForwarder(SMTPForwarder):
         any_unknown = any(charset == email.charset.UNKNOWN8BIT
                           for string, charset in chunks)
 
-        return any((
+        r = any((
             to_admin and delivery_status_subject,
             to_admin and ctype_report and ctype_delivery,
             any_unknown,
         ))
+        if r:
+            return 'Rejected due to TKForwarder.reject'
 
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
             return
-        if self.reject(envelope):
-            description = summary = 'Rejected due to TKForwarder.reject'
+        reject_reason = self.reject(envelope)
+        if reject_reason:
+            description = summary = reject_reason
             logging.info('%s', summary)
             self.store_failed_envelope(envelope, description, summary)
             return
