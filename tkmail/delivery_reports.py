@@ -335,12 +335,7 @@ def parse_delivery_report(message):
         undelivered_message = email.message_from_string(
             undelivered_part.get_payload())
     else:
-        if not undelivered_part.is_multipart():
-            undelivered_text = undelivered_part.get_payload()
-            if not re.search(header_pattern, undelivered_text, re.I):
-                # Probably not legitimate
-                return
-        raise Exception(undelivered_part.get_content_type())
+        raise ReportParseError(undelivered_part.get_content_type())
 
     report = parse_report_message(report_message)
     recipients = [r.recipient for r in report[1]]
