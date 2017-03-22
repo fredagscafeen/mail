@@ -193,6 +193,9 @@ def parse_report_message(report_message):
 
     statuses = []
     for recipient_fields in recipients_fields:
+        if recipient_fields.items() == []:
+            # Broken reports from Exch08.uni.au.dk
+            continue
         final_recipient_field = recipient_fields.get('Final-Recipient') or ''
         if not final_recipient_field.startswith('rfc822;'):
             raise Exception()
