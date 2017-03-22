@@ -202,16 +202,15 @@ def parse_typed_field(header, key, required_type=None, required=True):
 def parse_report_message(report_message):
     if report_message.get_content_type() != 'message/delivery-status':
         raise Exception()
-    report_desc = report_message.get('Content-Description')
-    if report_desc not in ('Delivery report', 'Delivery error report'):
-        raise Exception()
-    if not report_message.is_multipart():
-        raise Exception()
     message_status = report_message.get_payload()[0]
     recipients_fields = report_message.get_payload()[1:]
 
     reporting_mta = parse_typed_field(
         message_status, 'Reporting-MTA', 'dns')
+
+    # Used by Exch08.uni.au.dk
+    received_from_mta = parse_typed_field(
+        message_status, 'Received-From-MTA', 'dns', required=False)
 
     statuses = []
     for recipient_fields in recipients_fields:
@@ -227,14 +226,15 @@ def parse_report_message(report_message):
             raise Exception()
         status = recipient_fields.get('Status') or ''
         if status[:2] not in ('2.', '4.', '5.'):
-            raise Exception()
+            raise ReportParseError('Invalid status %r' % status)
         remote_mta = parse_typed_field(
             recipient_fields, 'Remote-MTA', 'dns', required=False)
         diagnostic_code = recipient_fields.get('Diagnostic-Code')
         will_retry = bool(recipient_fields.get('Will-Retry-Until'))
 
         statuses.append(RecipientStatus(
-            recipient, action, status, diagnostic_code, remote_mta, will_retry))
+            recipient, action, status, diagnostic_code,
+            remote_mta or received_from_mta, will_retry))
 
     return reporting_mta, statuses
 
@@ -264,40 +264,52 @@ def notification_from_report(report):
 def parse_delivery_report(message):
     report_from = (
         'MAILER-DAEMON@pulerau.scitechtinget.dk (Mail Delivery System)')
-    mime_report = 'multipart/report; report-type=delivery-status'
-    if not message.get('Content-Type', '').startswith(mime_report):
+    list_id_suffix = '.TAAGEKAMMERET.dk'
+    header_pattern = r'List-Id: .*%s' % (re.escape(list_id_suffix),)
+    header_pattern_bytes = header_pattern.encode('ascii')
+
+    if message.get_content_type() != 'multipart/report':
+        return
+    if message.get_param('report-type') != 'delivery-status':
         return
     if message.get('From') != report_from:
-        return
+        if not re.search(header_pattern_bytes, message.as_bytes()):
+            # Probably not legitimate
+            return
     if not message.is_multipart():
         raise Exception()
     report_parts = message.get_payload()
+
     if len(report_parts) != 3:
-        raise Exception()
+        ctypes = [p.get_content_type() for p in report_parts]
+        raise ReportParseError(
+            'Delivery status notification must contain 3 parts, not %r' %
+            (ctypes,))
     notification_message, report_message, undelivered_part = report_parts
-    report = parse_report_message(report_message)
-    recipients = [r.recipient for r in report[1]]
-    notification = notification_from_report(report)
-    undelivered_desc = undelivered_part.get('Content-Description')
-    undelivered_descs = ('Undelivered Message',
-                         'Undelivered Message Headers')
-    if undelivered_desc not in undelivered_descs:
-        raise Exception()
-    if undelivered_desc == 'Undelivered Message':
+
+    if undelivered_part.get_content_type() == 'message/rfc822':
         if not undelivered_part.is_multipart():
-            raise Exception()
-        if undelivered_part['Content-Type'] != 'message/rfc822':
             raise Exception()
         if len(undelivered_part.get_payload()) != 1:
             raise Exception()
         undelivered_message, = undelivered_part.get_payload()
-    else:
+    elif undelivered_part.get_content_type() == 'text/rfc822-headers':
         if undelivered_part.is_multipart():
-            raise Exception()
-        if undelivered_part['Content-Type'] != 'text/rfc822-headers':
             raise Exception()
         undelivered_message = email.message_from_string(
             undelivered_part.get_payload())
+    else:
+        if not undelivered_part.is_multipart():
+            undelivered_text = undelivered_part.get_payload()
+            if not re.search(header_pattern, undelivered_text, re.I):
+                # Probably not legitimate
+                return
+        raise Exception(undelivered_part.get_content_type())
+
+    report = parse_report_message(report_message)
+    recipients = [r.recipient for r in report[1]]
+    notification = notification_from_report(report)
+
     return EmailDeliveryReport(notification, undelivered_message, recipients)
 
 
