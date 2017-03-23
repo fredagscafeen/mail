@@ -273,21 +273,6 @@ class Envelope(object):
         return result
 
 
-def ascii_prefix(bs):
-    """Split bs into (x, y) such that x.encode('ascii') + y == bs."""
-    s = bs.decode('ascii', 'replace')
-    try:
-        i = s.index('\ufffd')
-    except ValueError:
-        return (s, b'')
-
-    # First i characters of bs are ascii,
-    # meaning first i bytes of bs are ascii.
-    x, y = s[:i], bs[i:]
-    assert y and x.encode('ascii') + y == bs
-    return x, y
-
-
 class ResilientSMTPChannel(smtpd.SMTPChannel):
     """smtpd.SMTPChannel is not encoding agnostic -- it requires UTF-8.
     As a workaround, we interpret the bytes as latin1,
