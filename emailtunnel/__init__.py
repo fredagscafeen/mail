@@ -320,7 +320,14 @@ class SMTPReceiver(smtpd.SMTPServer):
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        super(SMTPReceiver, self).__init__((self.host, self.port), None)
+        kwargs = {}
+        if sys.version_info >= (3, 5):
+            # 3.4: No decode_data
+            # 3.5: decode_data=True default (3.4 compatible)
+            # 3.6: decode_data=False default (incompatible!)
+            kwargs['decode_data'] = True
+        super(SMTPReceiver, self).__init__((self.host, self.port), None,
+                                           **kwargs)
         self.startup_log()
 
     def startup_log(self):
