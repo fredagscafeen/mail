@@ -8,7 +8,7 @@ import argparse
 import textwrap
 import smtplib
 
-from emailtunnel import Message, decode_any_header
+from emailtunnel import Message, decode_any_header, logger
 from tkmail.delivery_reports import parse_delivery_report
 
 try:
@@ -23,7 +23,6 @@ MAX_DAYS = 2
 
 
 def configure_logging(use_tty):
-    root = logging.getLogger()
     if use_tty:
         handler = logging.StreamHandler(None)
     else:
@@ -32,8 +31,8 @@ def configure_logging(use_tty):
     datefmt = None
     formatter = logging.Formatter(fmt, datefmt, '%')
     handler.setFormatter(formatter)
-    root.addHandler(handler)
-    root.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def get_report(basename):
@@ -49,7 +48,7 @@ def get_report(basename):
             metadata['subject'] = str(decode_any_header(
                 report.message.get('Subject', '')))
     except Exception:
-        logging.exception('parse_delivery_report failed')
+        logger.exception('parse_delivery_report failed')
 
     mtime = os.stat('error/%s.txt' % basename).st_mtime
 
@@ -65,7 +64,7 @@ def archive_report(basename):
         try:
             os.rename('error/%s' % filename, 'errorarchive/%s' % filename)
         except Exception:
-            logging.exception('Failed to move %s' % filename)
+            logger.exception('Failed to move %s' % filename)
 
 
 def main():
@@ -94,7 +93,7 @@ def main():
             report = get_report(basename)
         except Exception:
             exc_value = sys.exc_info()[1]
-            logging.exception('get_report failed')
+            logger.exception('get_report failed')
             report = {
                 'subject': '<get_report(%r) failed: %s>'
                            % (basename, exc_value),
@@ -107,8 +106,8 @@ def main():
 
     age = now - oldest
 
-    logging.info('%s report(s) / age %s (limit is %s / %s)' %
-                 (len(reports), age, MAX_SIZE, MAX_DAYS * 24 * 60 * 60))
+    logger.info('%s report(s) / age %s (limit is %s / %s)' %
+                (len(reports), age, MAX_SIZE, MAX_DAYS * 24 * 60 * 60))
 
     if (not args.dry_run and (len(reports) <= MAX_SIZE and
                               age <= MAX_DAYS * 24 * 60 * 60)):
@@ -193,10 +192,10 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logging.info('monitor exited via KeyboardInterrupt')
+        logger.info('monitor exited via KeyboardInterrupt')
         raise
     except SystemExit:
         raise
     except:
-        logging.exception('monitor exited via exception')
+        logger.exception('monitor exited via exception')
         raise

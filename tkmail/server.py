@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import json
-import logging
 import datetime
 import textwrap
 import itertools
@@ -12,7 +11,9 @@ from collections import namedtuple, OrderedDict
 import email.header
 from tkmail.util import DecodingDecodedGenerator
 
-from emailtunnel import SMTPForwarder, Message, InvalidRecipient, Envelope
+from emailtunnel import (
+    SMTPForwarder, Message, InvalidRecipient, Envelope, logger,
+)
 
 import tkmail.address
 
@@ -76,7 +77,7 @@ class TKForwarder(SMTPForwarder):
         super(TKForwarder, self).__init__(*args, **kwargs)
 
     def startup_log(self):
-        logging.info(
+        logger.info(
             'TKForwarder listening on %s:%s, relaying to %s:%s, GF year %s',
             self.host, self.port, self.relay_host, self.relay_port, self.year)
 
@@ -100,7 +101,7 @@ class TKForwarder(SMTPForwarder):
                 '%s: <%s>' % (header, '>, <'.join(group))
                 for header, group in recipients_header.items())
         except Exception as exn:
-            logging.exception('Envelope.recipients() processing failed')
+            logger.exception('Envelope.recipients() processing failed')
             rcpttos = envelope.rcpttos
             if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
                 rcpttos = [re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2',
@@ -114,8 +115,8 @@ class TKForwarder(SMTPForwarder):
                 recipients = repr(rcpttos)
             recipients = 'To: ' + recipients
 
-        logging.info("Subject: %r From: %s %s",
-                     str(message.subject), sender, recipients)
+        logger.info("Subject: %r From: %s %s",
+                    str(message.subject), sender, recipients)
 
     def log_delivery(self, message, recipients, sender):
         if all('@' in rcpt for rcpt in recipients):
@@ -143,8 +144,8 @@ class TKForwarder(SMTPForwarder):
 
         self.delivered += 1
 
-        logging.info('Subject: %r To: %s',
-                     str(message.subject), recipients_string)
+        logger.info('Subject: %r To: %s',
+                    str(message.subject), recipients_string)
 
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != '<>':
@@ -158,7 +159,7 @@ class TKForwarder(SMTPForwarder):
         description = summary = report.notification
         self.store_failed_envelope(envelope, description, summary,
                                    inner_envelope)
-        logging.info('%s', summary)
+        logger.info('%s', summary)
         return True
 
     def reject(self, envelope):
@@ -198,7 +199,7 @@ class TKForwarder(SMTPForwarder):
         reject_reason = self.reject(envelope)
         if reject_reason:
             summary = 'Rejected by TKForwarder.reject (%s)' % reject_reason
-            logging.info('%s', summary)
+            logger.info('%s', summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
         return super(TKForwarder, self).handle_envelope(envelope, peer)
@@ -216,14 +217,14 @@ class TKForwarder(SMTPForwarder):
         if from_domain_mo:
             from_domain = from_domain_mo.group(1)
             if has_strict_dmarc_policy(from_domain):
-                logging.info('Not rewriting subject on email from %r',
-                             envelope.message.get_header('From'))
+                logger.info('Not rewriting subject on email from %r',
+                            envelope.message.get_header('From'))
                 return None
 
         try:
             chunks = subject._chunks
         except AttributeError:
-            logging.warning('envelope.message.subject does not have _chunks')
+            logger.warning('envelope.message.subject does not have _chunks')
             chunks = email.header.decode_header(subject_decoded)
 
         # No space in '[TK]', since the chunks are joined by spaces.
@@ -235,7 +236,7 @@ class TKForwarder(SMTPForwarder):
         recipients, origin = tkmail.address.translate_recipient(
             self.year, name, list_ids=True)
         if not recipients:
-            logging.info("%s resolved to the empty list", name)
+            logger.info("%s resolved to the empty list", name)
             raise InvalidRecipient(rcptto)
         recipients.sort(key=lambda r: origin[r])
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
@@ -273,7 +274,7 @@ class TKForwarder(SMTPForwarder):
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
-        logging.info('Invalid recipient: %r', exn.args)
+        logger.info('Invalid recipient: %r', exn.args)
 
     def handle_invalid_recipient(self, envelope, exn):
         self.store_failed_envelope(
@@ -292,7 +293,7 @@ class TKForwarder(SMTPForwarder):
                     envelope, str(tb),
                     '%s: %s' % (exc_typename, exc_value))
             except:
-                logging.exception("Could not store_failed_envelope")
+                logger.exception("Could not store_failed_envelope")
 
         exc_key = (filename, line, exc_typename)
 
@@ -357,7 +358,7 @@ class TKForwarder(SMTPForwarder):
                 g = DecodingDecodedGenerator(fp)
                 g.flatten(inner_envelope.message.message)
             except Exception as exn:
-                logging.exception(
+                logger.exception(
                     'Could not write message with DecodingDecodedGenerator')
                 fp.write('[Exception in generator; see %s.mail]\n' %
                          now)

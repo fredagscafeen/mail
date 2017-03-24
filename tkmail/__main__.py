@@ -2,11 +2,11 @@ import logging
 import argparse
 import asyncore
 
+from emailtunnel import logger
 from tkmail.server import TKForwarder
 
 
 def configure_logging():
-    root = logging.getLogger()
     file_handler = logging.FileHandler('tkmail.log', 'a')
     stream_handler = logging.StreamHandler(None)
     fmt = '[%(asctime)s %(levelname)s] %(message)s'
@@ -14,8 +14,8 @@ def configure_logging():
     formatter = logging.Formatter(fmt, datefmt, '%')
     for handler in (file_handler, stream_handler):
         handler.setFormatter(formatter)
-        root.addHandler(handler)
-    root.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def get_parser():
@@ -45,11 +45,11 @@ def main():
     try:
         asyncore.loop(timeout=0.1, use_poll=True)
     except KeyboardInterrupt:
-        logging.info('TKForwarder exited via KeyboardInterrupt')
+        logger.info('TKForwarder exited via KeyboardInterrupt')
     except:
-        logging.exception('TKForwarder exited via exception')
+        logger.exception('TKForwarder exited via exception')
     else:
-        logging.error('TKForwarder exited via asyncore.loop returning')
+        logger.error('TKForwarder exited via asyncore.loop returning')
 
 
 if __name__ == "__main__":

@@ -41,6 +41,9 @@ import smtpd
 import smtplib
 
 
+logger = logging.getLogger('emailtunnel')
+
+
 def _fix_eols(data):
     if isinstance(data, str):
         return re.sub(r'(?:\r\n|\n|\r)', "\r\n", data)
@@ -119,10 +122,10 @@ class Message(object):
                 fp.write(message)
             with open(basename + '.out', 'ab') as fp:
                 fp.write(self.as_bytes())
-            logging.debug(
+            logger.debug(
                 'Data is not sane; logging to %s' % (basename,))
         except:
-            logging.exception(
+            logger.exception(
                 'Data is not sane and could not log to %s; continuing anyway'
                 % (basename,))
 
@@ -321,7 +324,7 @@ class SMTPReceiver(smtpd.SMTPServer):
         self.startup_log()
 
     def startup_log(self):
-        logging.debug('Initialize SMTPReceiver on %s:%s'
+        logger.debug('Initialize SMTPReceiver on %s:%s'
                       % (self.host, self.port))
 
     def log_receipt(self, peer, envelope):
@@ -348,8 +351,8 @@ class SMTPReceiver(smtpd.SMTPServer):
         else:
             source = ' Peer: %s:%s' % (ipaddr, port)
 
-        logging.info("Subject: %r From: %s %s%s"
-                     % (str(message.subject), sender, recipients, source))
+        logger.info("Subject: %r From: %s %s%s" %
+                    (str(message.subject), sender, recipients, source))
 
     def process_message(self, peer, mailfrom, rcpttos, str_data):
         """Overrides SMTPServer.process_message.
@@ -370,22 +373,22 @@ class SMTPReceiver(smtpd.SMTPServer):
             message = Message(data)
             envelope = Envelope(message, mailfrom, rcpttos)
         except:
-            logging.exception("Could not construct envelope!")
+            logger.exception("Could not construct envelope!")
             try:
                 self.handle_error(None, str_data)
             except:
-                logging.exception("handle_error(None) threw exception")
+                logger.exception("handle_error(None) threw exception")
             return '451 Requested action aborted: error in processing'
 
         try:
             self.log_receipt(peer, envelope)
             return self.handle_envelope(envelope, peer)
         except:
-            logging.exception("Could not handle envelope!")
+            logger.exception("Could not handle envelope!")
             try:
                 self.handle_error(envelope, str_data)
             except:
-                logging.exception("handle_error threw exception")
+                logger.exception("handle_error threw exception")
 
             # Instruct the sender to retry sending the message later.
             return '451 Requested action aborted: error in processing'
@@ -416,8 +419,8 @@ class RelayMixin(object):
         return relay_host
 
     def log_delivery(self, message, recipients, sender):
-        logging.info('To: %r From: %r Subject: %r'
-                     % (recipients, sender, str(message.subject)))
+        logger.info('To: %r From: %r Subject: %r' %
+                    (recipients, sender, str(message.subject)))
 
     def deliver(self, message, recipients, sender):
         relay_host = self.configure_relay()
@@ -532,7 +535,7 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
         return h
 
     def log_invalid_recipient(self, envelope, exn):
-        logging.error(repr(exn))
+        logger.error(repr(exn))
 
     def handle_invalid_recipient(self, envelope, exn):
         pass

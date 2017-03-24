@@ -1,4 +1,4 @@
-import logging
+from emailtunnel import logger
 
 
 try:
@@ -17,5 +17,5 @@ def has_strict_dmarc_policy(domain):
     try:
         return get_dmarc_policy(domain) in ('reject', 'quarantine')
     except Exception:
-        logging.exception('get_dmarc_policy(%r) raised an exception', domain)
+        logger.exception('get_dmarc_policy(%r) raised an exception', domain)
         return False

@@ -6,7 +6,7 @@ import threading
 
 import email.header
 
-from emailtunnel import SMTPReceiver, Envelope
+from emailtunnel import SMTPReceiver, Envelope, logger
 from tkmail.server import TKForwarder
 import emailtunnel.send
 
@@ -15,8 +15,8 @@ envelopes = []
 
 
 def deliver_local(message, recipients, sender):
-    logging.info("deliver_local: From: %r To: %r Subject: %r"
-                 % (sender, recipients, str(message.subject)))
+    logger.info("deliver_local: From: %r To: %r Subject: %r" %
+                (sender, recipients, str(message.subject)))
     for recipient in recipients:
         if '@' not in recipient:
             raise smtplib.SMTPDataError(0, 'No @ in %r' % recipient)
@@ -25,7 +25,7 @@ def deliver_local(message, recipients, sender):
 
 
 def store_failed_local(envelope, description, summary):
-    logging.info("Absorb call to store_failed_envelope")
+    logger.info("Absorb call to store_failed_envelope")
 
     # The method as_bytes is called in the real implementation;
     # when testing, ensure that it wouldn't raise an exception.
@@ -363,15 +363,15 @@ def main():
             print(repr(envelope))
             emailtunnel.send.main(*envelope, body='Hej')
 
-    logging.debug("Sleep for a bit...")
+    logger.debug("Sleep for a bit...")
     time.sleep(1)
-    logging.debug("%s envelopes" % len(envelopes))
+    logger.debug("%s envelopes" % len(envelopes))
 
     for envelope in envelopes:
         try:
             header = envelope.message.get_unique_header('X-test-id')
         except KeyError:
-            logging.error("Envelope without X-test-id")
+            logger.error("Envelope without X-test-id")
             continue
         test_envelopes[header].append(envelope)
 
@@ -385,11 +385,11 @@ def main():
             e = test_envelopes[test_id]
             test.check_envelopes(e)
         except AssertionError as e:
-            logging.exception("Test %s failed: %s" % (i, e))
+            logger.exception("Test %s failed: %s" % (i, e))
         else:
-            logging.info("Test %s succeeded" % i)
+            logger.info("Test %s succeeded" % i)
 
-    logging.info("tkmail.test finished; you may Ctrl-C")
+    logger.info("tkmail.test finished; you may Ctrl-C")
 
 
 if __name__ == "__main__":

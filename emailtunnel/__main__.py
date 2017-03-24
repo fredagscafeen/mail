@@ -1,3 +1,4 @@
+import logging
 import argparse
 import asyncore
 import threading
@@ -54,7 +55,6 @@ def main():
 
 
 if __name__ == "__main__":
-    import logging
     logging.basicConfig(level=logging.DEBUG)
 
     main()
