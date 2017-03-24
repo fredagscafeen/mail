@@ -14,6 +14,16 @@ import emailtunnel.send
 envelopes = []
 
 
+def configure_logging():
+    stream_handler = logging.StreamHandler(None)
+    fmt = '[%(asctime)s %(levelname)s] %(message)s'
+    datefmt = None
+    formatter = logging.Formatter(fmt, datefmt, '%')
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    logger.setLevel(logging.DEBUG)
+
+
 def deliver_local(message, recipients, sender):
     logger.info("deliver_local: From: %r To: %r Subject: %r" %
                 (sender, recipients, str(message.subject)))
@@ -308,6 +318,7 @@ class ListHeaderTest(object):
 
 
 def main():
+    configure_logging()
     relayer_port = 11110
     dumper_port = 11111
     relayer = TKForwarder('127.0.0.1', relayer_port,
@@ -400,5 +411,4 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     main()
