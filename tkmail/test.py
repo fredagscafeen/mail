@@ -375,6 +375,7 @@ def main():
             continue
         test_envelopes[header].append(envelope)
 
+    failures = 0
     for i, test in enumerate(tests):
         for envelope in test_envelopes[test.get_test_id()]:
             received_objects = envelope.message.get_all_headers('Received')
@@ -386,8 +387,14 @@ def main():
             test.check_envelopes(e)
         except AssertionError as e:
             logger.exception("Test %s failed: %s" % (i, e))
+            failures += 1
         else:
             logger.info("Test %s succeeded" % i)
+
+    if failures:
+        logger.error("%s failures", failures)
+    else:
+        logger.info("All tests succeeded")
 
     logger.info("tkmail.test finished; you may Ctrl-C")
 
