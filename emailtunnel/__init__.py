@@ -28,6 +28,7 @@ import sys
 import copy
 import logging
 import datetime
+import threading
 
 import email
 import email.utils
@@ -329,10 +330,29 @@ class SMTPReceiver(smtpd.SMTPServer):
         super(SMTPReceiver, self).__init__((self.host, self.port), None,
                                            **kwargs)
         self.startup_log()
+        self.thread = None
 
     def startup_log(self):
         logger.debug('Initialize SMTPReceiver on %s:%s'
                       % (self.host, self.port))
+
+    def start(self, daemon=True):
+        assert self.thread is None, 'SMTP daemon already running'
+        import asyncore
+        ready_event = threading.Event()
+        self.thread = threading.Thread(
+            target=asyncore.loop,
+            kwargs={'timeout': 0.1, 'use_poll': True})
+        self.thread.daemon = daemon
+        self.thread.start()
+        # Wait a while until the server is responding.
+        import time
+        time.sleep(0.1)
+
+    def stop(self):
+        import asyncore
+        asyncore.close_all()
+        self.thread.join()
 
     def log_receipt(self, peer, envelope):
         ipaddr, port = peer
