@@ -181,7 +181,7 @@ class TKForwarder(SMTPForwarder):
             content_type = ''
         ctype_report = content_type.startswith('multipart/report')
         ctype_delivery = 'report-type=delivery-status' in content_type
-        if to_admin and ctype_report and ctype_delivery:
+        if ctype_report and ctype_delivery:
             return 'Content-Type looks like a DSN'
 
         # Reject if a header is not encoded properly
