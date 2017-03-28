@@ -193,6 +193,16 @@ class TKForwarder(SMTPForwarder):
         if any_unknown:
             return 'invalid header encoding'
 
+        if envelope.mailfrom == '<>':
+            # RFC 5321, 4.5.5. Messages with a Null Reverse-Path:
+            # "[Automated email processors] SHOULD NOT reply to messages
+            # with a null reverse-path, and they SHOULD NOT add a non-null
+            # reverse-path, or change a null reverse-path to a non-null one,
+            # to such messages when forwarding."
+            # Since we would forward this message with a non-null reverse-path,
+            # we should reject it instead.
+            return 'null reverse-path'
+
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
             return
