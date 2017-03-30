@@ -150,6 +150,9 @@ class TKForwarder(SMTPForwarder):
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != '<>':
             return
+        rcpttos = tuple(r.lower() for r in envelope.rcpttos)
+        if rcpttos != ('admin@taagekammeret.dk',):
+            return
         report = parse_delivery_report(envelope.message.message)
         if not report:
             return
