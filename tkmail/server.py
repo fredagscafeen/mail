@@ -166,18 +166,7 @@ class TKForwarder(SMTPForwarder):
         return True
 
     def reject(self, envelope):
-        # Reject delivery status notifications not from the local postfix
-        rcpttos = tuple(r.lower() for r in envelope.rcpttos)
-        to_admin = rcpttos == ('admin@taagekammeret.dk',)
-
-        subject = envelope.message.subject
-        subject_str = str(subject)
-        delivery_status_subject = (
-            'Delayed Mail' in subject_str or
-            'Undelivered Mail Returned to Sender' in subject_str)
-        if to_admin and delivery_status_subject:
-            return 'Subject looks like a DSN'
-
+        # Reject delivery status notifications not sent to admin@
         try:
             content_type = envelope.message.get_unique_header('Content-Type')
         except KeyError:
@@ -186,6 +175,16 @@ class TKForwarder(SMTPForwarder):
         ctype_delivery = 'report-type=delivery-status' in content_type
         if ctype_report and ctype_delivery:
             return 'Content-Type looks like a DSN'
+
+        rcpttos = tuple(r.lower() for r in envelope.rcpttos)
+        to_admin = rcpttos == ('admin@taagekammeret.dk',)
+        subject = envelope.message.subject
+        subject_str = str(subject)
+        delivery_status_subject = (
+            'Delayed Mail' in subject_str or
+            'Undelivered Mail Returned to Sender' in subject_str)
+        if to_admin and delivery_status_subject:
+            return 'Subject looks like a DSN'
 
         # Reject if a header is not encoded properly
         header_items = envelope.message.header_items()
