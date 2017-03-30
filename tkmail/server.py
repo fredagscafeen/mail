@@ -350,8 +350,8 @@ class TKForwarder(SMTPForwarder):
             inner_envelope = envelope
         with open('error/%s.json' % now, 'w') as fp:
             metadata = {
-                'mailfrom': inner_envelope.mailfrom,
-                'rcpttos': inner_envelope.rcpttos,
+                'mailfrom': envelope.mailfrom,
+                'rcpttos': envelope.rcpttos,
                 'subject': str(inner_envelope.message.subject),
                 'date': inner_envelope.message.get_header('Date'),
                 'summary': summary,
