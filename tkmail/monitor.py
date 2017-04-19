@@ -119,6 +119,16 @@ def main():
 
     keys = 'mailfrom rcpttos subject date summary mtime basename'.split()
 
+    for report in reports:
+        try:
+            mailfrom = report['mailfrom']
+        except KeyError:
+            continue
+        # Sometimes the sender domain names are spam domains
+        # which can probably cause Google to block the email
+        # report. Mask sender domain names to avoid this.
+        report['mailfrom'] = mailfrom.replace('.', ' ').replace('@', ' ')
+
     lists = {}
     for k in keys:
         if k == 'rcpttos':
@@ -132,6 +142,10 @@ def main():
                 key=sort_key
             ))
 
+    # "Subject" section removed Apr 20, 2017 since Google blocked
+    # one of these report emails for having spam content, likely due
+    # to a very spammy-looking subject line in the body.
+
     body = textwrap.dedent("""
     This is the mail system of TAAGEKAMMERET.
 
@@ -139,9 +153,6 @@ def main():
 
     Reasons for failed delivery:
     {lists[summary]}
-
-    Subjects:
-    {lists[subject]}
 
     Senders:
     {lists[mailfrom]}
