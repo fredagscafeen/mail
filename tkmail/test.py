@@ -65,6 +65,7 @@ class RecipientTest(object):
         for i, recipient in enumerate(self._recipients):
             envelopes.append(
                 ('-F', 'recipient_test@localhost',
+                 '-f', 'recipient_test@localhost',
                  '-T', '%s@TAAGEKAMMERET.dk' % recipient,
                  '-s', '%s_%s' % (id(self), i),
                  '-I', 'X-test-id', self.get_test_id()))
@@ -115,6 +116,7 @@ class SubjectRewriteTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'subject-test@localhost',
+             '-f', 'subject-test@localhost',
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id())
@@ -165,10 +167,10 @@ class NoSubjectRewriteTest(object):
         from_address = 'mathias.rav@yahoo.com'
         return [
             ('-F', from_address,
+             '-f', from_address,
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id(),
-             '-I', 'From', from_address,
             )
         ]
 
@@ -208,6 +210,7 @@ class RejectSubjectTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'reject-subject-test@localhost',
+             '-f', 'reject-subject-test@localhost',
              '-T', 'admin@TAAGEKAMMERET.dk',
              '-s', self.subject,
              '-I', 'Subject', self.subject,
@@ -234,6 +237,7 @@ class RejectHeaderTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'reject-header-test@localhost',
+             '-f', 'reject-header-test@localhost',
              '-T', 'admin@TAAGEKAMMERET.dk',
              '-s', self.get_test_id(),
              '-I', self.field, self.value,
@@ -258,6 +262,7 @@ class ErroneousSubjectTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'subject-test@localhost',
+             '-f', 'subject-test@localhost',
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id())
@@ -276,6 +281,7 @@ class NoSubjectTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'no-subject-test@localhost',
+             '-f', 'no-subject-test@localhost',
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-I', 'X-test-id', self.get_test_id())
         ]
@@ -293,6 +299,7 @@ class ListHeaderTest(object):
     def get_envelopes(self):
         return [
             ('-F', 'list-header-test@localhost',
+             '-f', 'list-header-test@localhost',
              '-T', 'FORM13+FUVE15@TAAGEKAMMERET.dk',
              '-I', 'X-test-id', self.get_test_id())
         ]
