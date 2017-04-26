@@ -171,6 +171,7 @@ class NoSubjectRewriteTest(object):
              '-T', 'FORM13@TAAGEKAMMERET.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id(),
+             '-I', 'DKIM-Signature', 'dummy-signature',
             )
         ]
 
