@@ -208,6 +208,12 @@ class TKForwarder(SMTPForwarder):
         n_from = len(envelope.message.get_all_headers('From'))
         if n_from != 1:
             return 'wrong number of From-headers (%s)' % n_from
+        if not envelope.from_domain:
+            return 'invalid From-header'
+        dkim_sigs = envelope.message.get_all_headers('DKIM-Signature')
+        if envelope.strict_dmarc_policy and not dkim_sigs:
+            return ('%s has strict DMARC policy, ' % envelope.from_domain +
+                    'but message has no DKIM-Signature header')
 
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
