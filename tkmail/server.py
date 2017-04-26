@@ -212,6 +212,8 @@ class TKForwarder(SMTPForwarder):
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
             return
+        envelope.from_domain = self.get_from_domain(envelope)
+        envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
         reject_reason = self.reject(envelope)
         if reject_reason:
             summary = 'Rejected by TKForwarder.reject (%s)' % reject_reason
@@ -219,6 +221,16 @@ class TKForwarder(SMTPForwarder):
             self.store_failed_envelope(envelope, summary, summary)
             return
         return super(TKForwarder, self).handle_envelope(envelope, peer)
+
+    def get_from_domain(self, envelope):
+        from_domain_mo = re.search(r'@([^ \t\n>]+)',
+                                   envelope.message.get_header('From', ''))
+        if from_domain_mo:
+            return from_domain_mo.group(1)
+
+    def strict_dmarc_policy(self, envelope):
+        if envelope.from_domain:
+            return has_strict_dmarc_policy(envelope.from_domain)
 
     def translate_subject(self, envelope):
         subject = envelope.message.subject
@@ -228,14 +240,10 @@ class TKForwarder(SMTPForwarder):
             # No change
             return None
 
-        from_domain_mo = re.search(r'@([^ \t\n>]+)',
-                                   envelope.message.get_header('From', ''))
-        if from_domain_mo:
-            from_domain = from_domain_mo.group(1)
-            if has_strict_dmarc_policy(from_domain):
-                logger.info('Not rewriting subject on email from %r',
-                            envelope.message.get_header('From'))
-                return None
+        if envelope.strict_dmarc_policy:
+            logger.info('Not rewriting subject on email from %r',
+                        envelope.message.get_header('From'))
+            return None
 
         try:
             chunks = subject._chunks
