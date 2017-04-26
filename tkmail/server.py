@@ -205,6 +205,10 @@ class TKForwarder(SMTPForwarder):
             # we should reject it instead.
             return 'null reverse-path'
 
+        n_from = len(envelope.message.get_all_headers('From'))
+        if n_from != 1:
+            return 'wrong number of From-headers (%s)' % n_from
+
     def handle_envelope(self, envelope, peer):
         if self.handle_delivery_report(envelope):
             return
