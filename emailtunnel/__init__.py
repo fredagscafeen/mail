@@ -258,9 +258,16 @@ class Envelope(object):
             raw_values = self.message.get_all_headers(k)
             if not raw_values:
                 continue
-            # Paranoid header handling
-            values = [str(decode_any_header(str(v))) for v in raw_values]
-            for realname, address in email.utils.getaddresses(values):
+            # Don't apply decode_any_header to raw_values
+            # before passing it to email.utils.getaddresses,
+            # since the recipient =?utf8?q?foo=2Cbar?= <foo@bar>
+            # would be turned into foo,bar <foo@bar>,
+            # which would be interpreted as <foo>, bar <foo@bar>.
+            for realname, address in email.utils.getaddresses(raw_values):
+                # Actually there's no need to apply decode_any_header to
+                # realname here since we don't need to interpret it.
+                # realname = str(decode_any_header(realname))
+                address = str(decode_any_header(address))
                 # Use setdefault so that To takes precedence over Cc
                 visible_recipients.setdefault(address, (realname, k))
 

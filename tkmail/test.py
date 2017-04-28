@@ -325,6 +325,28 @@ class ListHeaderTest(object):
         return str(id(self))
 
 
+class ToHeaderTest(object):
+    def __init__(self, to_addr):
+        self.to_addr = to_addr
+
+    def get_envelopes(self):
+        return [
+            ('-F', 'to-header-test@localhost',
+             '-f', 'to-header-test@localhost',
+             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-I', 'To', self.to_addr,
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 def main():
     configure_logging()
     relayer_port = 11110
@@ -365,6 +387,7 @@ def main():
         ListHeaderTest(),
         RejectSubjectTest('=?unknown-8bit?b?VW5k?='),
         RejectSubjectTest('Undelivered Mail Returned to Sender'),
+        ToHeaderTest('=?utf8?q?f=C3=B8o=2Cb=C3=A6ar?= <foo@bar>'),
         # The following is disabled since emailtunnel.send can't send this
         # Content-Type.
         # RejectHeaderTest('Content-Type',
