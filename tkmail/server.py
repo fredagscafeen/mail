@@ -337,6 +337,14 @@ class TKForwarder(SMTPForwarder):
             sender, recipient, subject, body)
         admin_message.add_header('Auto-Submitted', 'auto-replied')
 
+        try:
+            headers = tkmail.headers.get_extra_headers(sender, 'tkmailerror',
+                                                       is_group=True)
+            for k, v in headers:
+                admin_message.add_header(k, v)
+        except Exception:
+            logger.exception("Could not add extra headers in forward_to_admin")
+
         self.deliver(admin_message, admin_emails, sender)
 
     def store_failed_envelope(self, envelope, description, summary,

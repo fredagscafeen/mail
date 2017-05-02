@@ -10,6 +10,7 @@ import smtplib
 
 from emailtunnel import Message, decode_any_header, logger
 from tkmail.delivery_reports import parse_delivery_report
+import tkmail.headers
 
 try:
     from tkmail.address import get_admin_emails
@@ -173,6 +174,11 @@ def main():
     sender = recipient = 'admin@TAAGEKAMMERET.dk'
     message = Message.compose(
         sender, recipient, '[TK-admin] Failed email delivery', body)
+
+    headers = tkmail.headers.get_extra_headers(sender, 'tkmailmonitor',
+                                               is_group=True)
+    for k, v in headers:
+        message.add_header(k, v)
 
     if args.dry_run:
         print("Envelope sender: %r" % sender)
