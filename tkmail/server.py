@@ -23,6 +23,7 @@ from tkmail.address import (
 )
 from tkmail.dmarc import has_strict_dmarc_policy
 from tkmail.delivery_reports import parse_delivery_report
+import tkmail.headers
 
 
 RecipientGroup = namedtuple(
@@ -283,24 +284,8 @@ class TKForwarder(SMTPForwarder):
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
         list_name = str(group.origin).lower()
-        list_id = '%s.TAAGEKAMMERET.dk' % list_name
-        unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
-        help = '<mailto:%s?subject=list-help>' % (sender,)
-        sub = '<mailto:%s?subject=subscribe%%20%s>' % (sender, list_name)
-        headers = [
-            ('Sender', sender),
-            ('List-Name', list_name),
-            ('List-Id', list_id),
-            ('List-Unsubscribe', unsub),
-            ('List-Help', help),
-            ('List-Subscribe', sub),
-        ]
-        if isinstance(group.origin, GroupAlias):
-            headers.extend([
-                ('Precedence', 'bulk'),
-                ('X-Auto-Response-Suppress', 'OOF'),
-            ])
-        return headers
+        is_group = isinstance(group.origin, GroupAlias)
+        return tkmail.headers.get_extra_headers(sender, list_name, is_group)
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
