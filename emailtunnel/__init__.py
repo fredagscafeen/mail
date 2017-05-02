@@ -55,6 +55,11 @@ def _fix_eols(data):
                         % type(data).__name__)
 
 
+def make_message_id(domain):
+    now_str = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S.%f')
+    return '%s@%s' % (now_str, domain)
+
+
 def now_string():
     """Return the current date and time as a string."""
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
@@ -218,7 +223,7 @@ class Message(object):
         self.set_unique_header('Subject', s)
 
     @classmethod
-    def compose(cls, from_, to, subject, body):
+    def compose(cls, from_, to, subject, body, message_id=None):
         message = cls()
         message.add_header('From', from_)
         message.add_header('To', to)
@@ -226,6 +231,10 @@ class Message(object):
         message.add_header(
             'Date',
             datetime.datetime.utcnow().strftime("%a, %d %b %Y %T +0000"))
+        if message_id is None:
+            domain = from_.split('@')[1]
+            message_id = make_message_id(domain)
+        message.add_header('Message-ID', message_id)
         message.set_body_text(body, 'utf-8')
         return message
 
