@@ -372,10 +372,10 @@ def main():
     configure_logging()
     relayer_port = 11110
     dumper_port = 11111
-    relayer = TKForwarder('127.0.0.1', relayer_port,
-                          '127.0.0.1', dumper_port,
+    relayer = TKForwarder('localhost', relayer_port,
+                          'localhost', dumper_port,
                           year=2016)
-    # dumper = DumpReceiver('127.0.0.1', dumper_port)
+    # dumper = DumpReceiver('localhost', dumper_port)
     relayer.deliver = deliver_local
     relayer.store_failed_envelope = store_failed_local
     relayer.start()
@@ -419,7 +419,7 @@ def main():
     for test in tests:
         for envelope in test.get_envelopes():
             envelope = [str(x) for x in envelope]
-            envelope += ['--relay', '127.0.0.1:%s' % relayer_port]
+            envelope += ['--relay', 'localhost:%s' % relayer_port]
             print(repr(envelope))
             emailtunnel.send.main(*envelope, body='Hej')
 
