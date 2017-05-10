@@ -57,7 +57,7 @@ def _fix_eols(data):
 
 def make_message_id(domain):
     now_str = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S.%f')
-    return '%s@%s' % (now_str, domain)
+    return '<%s@%s>' % (now_str, domain)
 
 
 def now_string():
