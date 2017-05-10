@@ -60,6 +60,18 @@ def make_message_id(domain):
     return '<%s@%s>' % (now_str, domain)
 
 
+def validate_message_id(message_id):
+    # Implement RFC5322 msg-id grammar,
+    # except without obs-id-left, obs-id-right, no-fold-literal.
+    message_id_strip = message_id.strip()  # Remove CFWS
+    atext = r'[a-zA-Z0-9!#$%&\'*+-/=?^_`{|}~]'
+    dot_atom_text = r'%s+(?:\.%s+)*' % (atext, atext)
+    msg_id_pattern = r'^<%s@%s>$' % (dot_atom_text, dot_atom_text)
+    if not re.match(msg_id_pattern, message_id_strip):
+        raise ValueError('Invalid Message-ID: %r' % (message_id,))
+    return message_id_strip
+
+
 def now_string():
     """Return the current date and time as a string."""
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
@@ -234,6 +246,7 @@ class Message(object):
         if message_id is None:
             domain = from_.split('@')[1]
             message_id = make_message_id(domain)
+        message_id = validate_message_id(message_id)
         message.add_header('Message-ID', message_id)
         message.set_body_text(body, 'utf-8')
         return message
