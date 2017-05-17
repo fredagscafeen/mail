@@ -24,6 +24,7 @@ from tkmail.address import (
 from tkmail.dmarc import has_strict_dmarc_policy
 from tkmail.delivery_reports import parse_delivery_report
 import tkmail.headers
+from emailtunnel.mailhole import MailholeRelayMixin
 
 
 RecipientGroup = namedtuple(
@@ -35,7 +36,7 @@ def now_string():
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 
 
-class TKForwarder(SMTPForwarder):
+class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
 
     ERROR_TEMPLATE = """
