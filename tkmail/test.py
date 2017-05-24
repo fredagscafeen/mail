@@ -347,6 +347,29 @@ class ToHeaderTest(object):
         return str(id(self))
 
 
+class ReferencesHeaderTest(object):
+    def get_envelopes(self):
+        return [
+            ('-F', 'references-header-test@localhost',
+             '-f', 'references-header-test@localhost',
+             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-I', 'References', '<space test>',
+             '-I', 'X-test-id', self.get_test_id())
+        ]
+
+    def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
+        e, = envelopes
+        v, = e.message.get_all_headers('References')
+        if '<spacetest>' not in v:
+            raise AssertionError('Did not fix References')
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 def main():
     configure_logging()
     relayer_port = 11110
@@ -392,6 +415,7 @@ def main():
         # Content-Type.
         # RejectHeaderTest('Content-Type',
         #                  'multipart/report; report-type=delivery-status'),
+        ReferencesHeaderTest(),
     ]
     test_envelopes = {
         test.get_test_id(): []
