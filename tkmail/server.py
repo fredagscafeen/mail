@@ -228,7 +228,47 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             logger.info('%s', summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
+        self.fix_headers(envelope.message)
         return super(TKForwarder, self).handle_envelope(envelope, peer)
+
+    def fix_headers(self, message):
+        # Fix References: header that has been broken by Postfix.
+        # If an email has a DKIM-Signature on the RFC5322.References header,
+        # and Postfix breaks RFC5322.References into multiple lines because
+        # some lines were longer than 990 bytes, then the DKIM-Signature
+        # becomes invalid. Since no sane email provider would apply a
+        # DKIM-Signature to a RFC5322.References header with erroneous
+        # whitespace, we remove any erroneous whitespace, that is,
+        # whitespace between two angle brackets <...>, from the header.
+        references_header = message.get_all_headers('References')
+        fixed_header = []
+        for v in references_header:
+            # Move space/newline in front of the '<'.
+            v2 = re.sub(r'(<[^<> \n\r\t]*)([ \n\r\t]+)', r'\2\1', v)
+            if v != v2:
+                # We had to move some whitespace to fix the header,
+                # so we may inadvertently have created new too-long lines.
+                # Replace all whitespace with CR LF SP to avoid long lines.
+                v2 = '\r\n '.join(v2.split())
+            fixed_header.append(v2)
+        if references_header == fixed_header:
+            # No change required
+            return
+        # We had to fix RFC5322.References. In order to use set_unique_header
+        # (to retain the position of the header in the message) there must be
+        # only one RFC5322.References in the message.
+        try:
+            v2, = fixed_header
+        except ValueError:
+            # Write fixed_header to log.
+            logger.exception('Multiple References-headers: %r', fixed_header)
+            # I think multiple RFC5322.References headers is invalid,
+            # but the RFC does not make it entirely clear.
+            # On the other hand, who would have both multiple
+            # RFC5322.References *and* header lines longer than 990 bytes?
+            raise NotImplementedError(
+                'Multiple References:-headers and some/all are invalid')
+        message.set_unique_header('References', v2)
 
     def get_from_domain(self, envelope):
         from_domain_mo = re.search(r'@([^ \t\n>]+)',
