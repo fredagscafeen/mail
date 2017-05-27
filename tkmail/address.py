@@ -41,13 +41,6 @@ def get_admin_emails():
         pass
 
     if not email_addresses:
-        try:
-            db = tkmail.database.DatabaseTkfolk()
-            email_addresses = db.get_admin_emails()
-        except:
-            pass
-
-    if not email_addresses:
         email_addresses = list(ADMINS)
 
     return email_addresses
