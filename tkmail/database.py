@@ -1,18 +1,11 @@
-# import pkg_resources ##required on my setup to use MySQLdb
-# pkg_resources.require("MySQL-python")  ##required on my setup to use MySQLdb
-# import MySQLdb as mdb
-import mysql.connector
+import MySQLdb
 from tkmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
 
 
 class Database(object):
     def __init__(self):
-        if HOSTNAME not in ('127.0.0.1', 'localhost'):
-            raise ValueError('Non-local hostname not supported by ' +
-                             'mysql.connector')
-        self._mysql = mysql.connector.Connect(
-            user=USERNAME, password=PASSWORD, database=DATABASE)
-
+        self._mysql = MySQLdb.connect(host=HOSTNAME, user=USERNAME,
+                                      passwd=PASSWORD, db=DATABASE)
         self._cursor = self._mysql.cursor()
 
     def _execute(self, statement, *args):
