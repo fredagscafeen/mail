@@ -349,6 +349,7 @@ class SMTPReceiver:
         self.stop()
 
     def start(self):
+        self.startup_log()
         self.controller.start()
 
     def stop(self):
