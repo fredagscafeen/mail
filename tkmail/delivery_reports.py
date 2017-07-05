@@ -269,14 +269,14 @@ def notification_from_report(report):
     for status in statuses:
         diagnostic_type, diagnostic_text = parse_typed_field(
             re.sub(r'\s+', ' ', status.diagnostic_code or ''),
-            'status.diagnostic_code')
+            'status.diagnostic_code', required=False)
         if diagnostic_type == 'smtp':
             message = abbreviate_diagnostic_message(
                 status.remote_mta or '',
                 status.status,
                 diagnostic_text)
         else:
-            message = diagnostic_text
+            message = diagnostic_text or status.status
         if status.will_retry:
             message += '; message will be retried'
         n.setdefault(message, []).append(status.recipient)
