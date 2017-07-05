@@ -621,9 +621,10 @@ class SMTPForwarder(SMTPReceiver, RelayMixin):
                          recipients, mailfrom)
 
         else:
+            envelope_base = envelope
             already_sent = set()
             for group in recipients:
-                envelope = copy.deepcopy(original_envelope)
+                envelope = copy.deepcopy(envelope_base)
                 mailfrom = self.get_envelope_mailfrom(
                     envelope, recipients=group)
                 received = self._get_envelope_received_header(
