@@ -32,6 +32,16 @@ def deliver_local(message, recipients, sender):
     envelopes.append(envelope)
 
 
+def forward_local(original_envelope, message, recipients, sender):
+    logger.info("forward_local: From: %r To: %r Subject: %r" %
+                (sender, recipients, str(message.subject)))
+    for recipient in recipients:
+        if '@' not in recipient:
+            raise smtplib.SMTPDataError(0, 'No @ in %r' % recipient)
+    envelope = Envelope(message, sender, recipients)
+    envelopes.append(envelope)
+
+
 def store_failed_local(envelope, description, summary):
     logger.info("Absorb call to store_failed_envelope")
 
@@ -377,6 +387,7 @@ def main():
                           year=2016)
     # dumper = DumpReceiver('localhost', dumper_port)
     relayer.deliver = deliver_local
+    relayer.forward = forward_local
     relayer.store_failed_envelope = store_failed_local
     relayer.start()
 
