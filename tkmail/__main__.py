@@ -17,20 +17,17 @@ def configure_logging():
     logger.setLevel(logging.DEBUG)
 
 
-def get_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--port', type=int, default=25,
-                        help='Relay port')
-    parser.add_argument('-P', '--listen-port', type=int, default=9000,
-                        help='Listen port')
-    parser.add_argument('-y', '--gf', type=int, default=2014,
-                        help='GF year')
-    return parser
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', '--port', type=int, default=25,
+                    help='Relay port')
+parser.add_argument('-P', '--listen-port', type=int, default=9000,
+                    help='Listen port')
+parser.add_argument('-y', '--gf', type=int, default=2014,
+                    help='GF year')
 
 
 def main():
     configure_logging()
-    parser = get_parser()
     args = parser.parse_args()
 
     receiver_host = '127.0.0.1'
