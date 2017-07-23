@@ -30,7 +30,7 @@ class DirectAlias(DirectAliasBase):
 
 def get_current_period(db=None):
     if db is None:
-        db = Database()
+        db = tkmail.database.Database()
     try:
         old_value = get_current_period.cached_value
         get_current_period.cached_value = db.get_current_period()
