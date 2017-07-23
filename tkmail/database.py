@@ -1,5 +1,7 @@
 import MySQLdb
 from tkmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
+import pickle
+import base64
 
 
 class Database(object):
@@ -122,3 +124,14 @@ class Database(object):
                 for name, title in best_rows]
         best.sort(key=lambda x: x[2])
         return best
+
+    def get_current_period(self):
+        rows = self._fetchall("""
+            SELECT `value` FROM `constance_config` WHERE `key` = "GFYEAR"
+        """)
+        if len(rows) == 0:
+            raise Exception("No 'GFYEAR' in constance_config")
+        value = rows[0][0]
+        value = base64.b64decode(value)
+        value = pickle.loads(value)
+        return value
