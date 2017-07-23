@@ -383,8 +383,7 @@ def main():
     relayer_port = 11110
     dumper_port = 11111
     relayer = TKForwarder('localhost', relayer_port,
-                          'localhost', dumper_port,
-                          year=2016)
+                          'localhost', dumper_port)
     # dumper = DumpReceiver('localhost', dumper_port)
     relayer.deliver = deliver_local
     relayer.forward = forward_local

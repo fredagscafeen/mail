@@ -72,7 +72,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     """
 
     def __init__(self, *args, **kwargs):
-        self.year = kwargs.pop('year')
+        self.year = tkmail.address.get_current_period()
         self.exceptions = set()
         self.delivered = 0
         self.deliver_recipients = {}
@@ -222,6 +222,8 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
                     'but message has no DKIM-Signature header')
 
     def handle_envelope(self, envelope, peer):
+        # Call get_current_period only once per envelope
+        self.year = tkmail.address.get_current_period()
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)

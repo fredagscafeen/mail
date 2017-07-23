@@ -22,8 +22,6 @@ parser.add_argument('-p', '--port', type=int, default=25,
                     help='Relay port')
 parser.add_argument('-P', '--listen-port', type=int, default=9000,
                     help='Listen port')
-parser.add_argument('-y', '--gf', type=int, default=2014,
-                    help='GF year')
 
 
 def main():
@@ -36,8 +34,7 @@ def main():
     relay_port = args.port
 
     server = TKForwarder(
-        receiver_host, receiver_port, relay_host, relay_port,
-        year=args.gf)
+        receiver_host, receiver_port, relay_host, relay_port)
     try:
         server.run()
     except Exception as exn:
