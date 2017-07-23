@@ -1,4 +1,5 @@
 import re
+import logging
 import functools
 from collections import namedtuple
 
@@ -25,6 +26,26 @@ class PeriodAlias(PeriodAliasBase):
 class DirectAlias(DirectAliasBase):
     def __str__(self):
         return 'DIRECTUSER%s' % self.pk
+
+
+def get_current_period(db=None):
+    if db is None:
+        db = Database()
+    try:
+        old_value = get_current_period.cached_value
+        get_current_period.cached_value = db.get_current_period()
+    except Exception:
+        logging.exception(
+            "Failed to get current period from database, " +
+            "reusing cached value %r", get_current_period.cached_value)
+    else:
+        if get_current_period.cached_value != old_value:
+            if old_value is not None:
+                logging.info("Current period changed from %r to %r",
+                             old_value, get_current_period.cached_value)
+    return get_current_period.cached_value
+
+get_current_period.cached_value = None
 
 
 def get_admin_emails():
