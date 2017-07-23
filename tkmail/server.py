@@ -78,6 +78,10 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         self.deliver_recipients = {}
         super(TKForwarder, self).__init__(*args, **kwargs)
 
+    def should_mailhole(self, message, recipient, sender):
+        # Send everything to mailhole
+        return True
+
     def startup_log(self):
         logger.info(
             'TKForwarder listening on %s:%s, relaying to %s:%s, GF year %s',
