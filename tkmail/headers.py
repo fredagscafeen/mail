@@ -1,4 +1,4 @@
-def get_extra_headers(sender, list_name, is_group):
+def get_extra_headers(sender, list_name, is_group, skip=()):
     list_id = '%s.TAAGEKAMMERET.dk' % list_name
     unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (sender, list_name)
     help = '<mailto:%s?subject=list-help>' % (sender,)
@@ -16,4 +16,5 @@ def get_extra_headers(sender, list_name, is_group):
             ('Precedence', 'bulk'),
             ('X-Auto-Response-Suppress', 'OOF'),
         ])
+    headers = [(k, v) for k, v in headers if k.lower() not in skip]
     return headers
