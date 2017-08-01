@@ -332,7 +332,9 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         sender = self.get_envelope_mailfrom(envelope)
         list_name = str(group.origin).lower()
         is_group = isinstance(group.origin, GroupAlias)
-        return tkmail.headers.get_extra_headers(sender, list_name, is_group)
+        dkim_protected = self.get_dkim_protected_headers(envelope)
+        return tkmail.headers.get_extra_headers(sender, list_name, is_group,
+                                                skip=dkim_protected)
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
