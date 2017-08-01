@@ -212,6 +212,44 @@ class NoSubjectRewriteTest(object):
         return str(id(self))
 
 
+class NoListUnsubscribeTest(object):
+    '''
+    Test that emails with "h=list-unsubscribe" in DKIM-Signature
+    do not have List-Unsubscribe added.
+    '''
+
+    def get_envelopes(self):
+        from_address = 'dkim@test.local'
+        return [
+            ('-F', from_address,
+             '-f', from_address,
+             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-s', 'test',
+             '-I', 'X-test-id', self.get_test_id(),
+             '-I', 'DKIM-Signature',
+             '''v=1; a=rsa-sha256; d=ummy;s=tupid; c=relaxed/relaxed; \
+             q=dns/txt; t=est; h=feedback-id:list-unsubscribe:reply-to; \
+             bh=test; b=test''',
+            )
+        ]
+
+    def check_envelopes(self, envelopes):
+        if not envelopes:
+            raise AssertionError(
+                "No envelopes for test id %r" % self.get_test_id())
+        message = envelopes[0].message
+
+        try:
+            message.get_unique_header('List-Unsubscribe')
+        except KeyError as e:
+            return
+        else:
+            raise AssertionError('Expected no List-Unsubscribe header')
+
+    def get_test_id(self):
+        return str(id(self))
+
+
 class RejectSubjectTest(object):
     def __init__(self, subject):
         self.subject = subject
@@ -404,6 +442,7 @@ def main():
         SubjectRewriteTest('=?UTF-8?Q?Gl=C3=A6delig_jul?='),
         SubjectRewriteTest('=?UTF-8?Q?Re=3A_=5BTK=5D_Gl=C3=A6delig_jul?='),
         NoSubjectRewriteTest('Test'),
+        NoListUnsubscribeTest(),
         # Invalid encoding a; should be skipped by ecre in email.header
         ErroneousSubjectTest('=?UTF-8?a?hello_world?='),
         # Invalid base64 data; email.header raises an exception
