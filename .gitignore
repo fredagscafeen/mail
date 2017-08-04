@@ -8,3 +8,5 @@ __pycache__
 /tkmail/config.py
 *.pyc
 /insane
+/prodekanus/venv
+/prodekanus/mailhole_key.env
