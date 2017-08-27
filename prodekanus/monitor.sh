@@ -1,4 +1,3 @@
 #!/bin/bash
 cd /home/tkammer/mail
-source venv/bin/activate
-python -m tkmail.monitor
+prodekanus/venv/bin/python -m tkmail.monitor
