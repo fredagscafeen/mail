@@ -290,6 +290,7 @@ def parse_delivery_report(message):
         'MAILER-DAEMON@pulerau.scitechtinget.dk (Mail Delivery System)',
         '<postmaster@smtp01.uni.au.dk>',
         'Internet Mail Delivery <postmaster@st11p00im-asmtp001.me.com>',
+        'Mail Delivery System <MAILER-DAEMON@BE0.PostAU.uni.au.dk>',
     )
     list_id_suffix = '.TAAGEKAMMERET.dk'
     header_pattern = r'List-Id: .*%s' % (re.escape(list_id_suffix),)
