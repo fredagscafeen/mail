@@ -287,7 +287,9 @@ def notification_from_report(report):
 
 def parse_delivery_report(message):
     report_from = (
-        'MAILER-DAEMON@pulerau.scitechtinget.dk (Mail Delivery System)')
+        'MAILER-DAEMON@pulerau.scitechtinget.dk (Mail Delivery System)',
+        '<postmaster@smtp01.uni.au.dk>',
+    )
     list_id_suffix = '.TAAGEKAMMERET.dk'
     header_pattern = r'List-Id: .*%s' % (re.escape(list_id_suffix),)
     header_pattern_bytes = header_pattern.encode('ascii')
@@ -301,7 +303,7 @@ def parse_delivery_report(message):
     # Spammers cause many bogus/invalid DSNs to be sent around.
     # Only trust DSNs from our local postfix or DSNs containing
     # a magic marker (List-Id) that our mail relay inserts.
-    if message.get('From') != report_from:
+    if message.get('From') not in report_from:
         if not re.search(header_pattern_bytes, message.as_bytes()):
             # Probably not legitimate
             return
