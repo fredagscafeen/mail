@@ -389,8 +389,8 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             inner_envelope = envelope
         with open('error/%s.json' % now, 'w') as fp:
             metadata = {
-                'mailfrom': envelope.mailfrom,
-                'rcpttos': envelope.rcpttos,
+                'mailfrom': inner_envelope.mailfrom,
+                'rcpttos': inner_envelope.rcpttos,
                 'subject': str(inner_envelope.message.subject),
                 'date': inner_envelope.message.get_header('Date'),
                 'summary': summary,
