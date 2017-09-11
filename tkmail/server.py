@@ -286,29 +286,6 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         if envelope.from_domain:
             return has_strict_dmarc_policy(envelope.from_domain)
 
-    def translate_subject(self, envelope):
-        subject = envelope.message.subject
-        subject_decoded = str(subject)
-
-        if '[TK' in subject_decoded:
-            # No change
-            return None
-
-        if envelope.strict_dmarc_policy:
-            logger.info('Not rewriting subject on email from %r',
-                        envelope.message.get_header('From'))
-            return None
-
-        try:
-            chunks = subject._chunks
-        except AttributeError:
-            logger.warning('envelope.message.subject does not have _chunks')
-            chunks = email.header.decode_header(subject_decoded)
-
-        # No space in '[TK]', since the chunks are joined by spaces.
-        subject_chunks = [('[TK]', None)] + list(chunks)
-        return email.header.make_header(subject_chunks)
-
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split('@')
         recipients, origin = tkmail.address.translate_recipient(
