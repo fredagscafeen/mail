@@ -117,6 +117,15 @@ class MultipleRecipientTest(RecipientTest):
             raise AssertionError("Only %r recipients" % len(recipients))
 
 
+class SingleRecipientTest(RecipientTest):
+    def __init__(self, recipient):
+        self._recipients = [recipient]
+
+    def check_recipients(self, recipients):
+        if len(recipients) != 1:
+            raise AssertionError("%r recipients" % len(recipients))
+
+
 class NoSubjectRewriteTest(object):
     '''
     Test that emails from yahoo.com do not have subjects rewritten.
@@ -411,6 +420,7 @@ def main():
         # RejectHeaderTest('Content-Type',
         #                  'multipart/report; report-type=delivery-status'),
         ReferencesHeaderTest(),
+        SingleRecipientTest('FUOUE17'),
     ]
     test_envelopes = {
         test.get_test_id(): []
