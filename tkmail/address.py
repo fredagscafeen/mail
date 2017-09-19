@@ -175,7 +175,7 @@ def parse_alias_title(alias, db, current_period):
     elif base in ('BEST', 'FU'):
         def f():
             return db.get_bestfu_members(base, period)
-    elif base in BEST or re.match(r'^E?FU[A-ZÆØÅ]{2}$', base):
+    elif base in BEST or re.match(r'^E?FU\w+$', base):
         def f():
             return db.get_user_by_title(base, period)
     else:
