@@ -167,7 +167,10 @@ def parse_alias_group(alias, db, current_period):
 
 
 def parse_alias_title(alias, db, current_period):
-    base, period = tk.parse(alias, current_period)
+    try:
+        base, period = tk.parse(alias, current_period)
+    except ValueError:
+        return None, None
     if base == 'BESTFU':
         def f():
             return (db.get_bestfu_members('BEST', period) +
