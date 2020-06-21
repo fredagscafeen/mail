@@ -10,9 +10,9 @@ from tkmail.config import ADMINS
 import tktitler as tk
 
 
-GroupAliasBase = namedtuple('GroupAlias', 'name'.split())
-PeriodAliasBase = namedtuple('PeriodAlias', 'kind period'.split())
-DirectAliasBase = namedtuple('DirectAlias', 'pk'.split())
+GroupAliasBase = namedtuple("GroupAlias", "name")
+PeriodAliasBase = namedtuple("PeriodAlias", "kind period name")
+DirectAliasBase = namedtuple("DirectAlias", "pk name")
 
 
 BEST = 'CERM FORM INKA KASS NF PR SEKR VC'.split()
@@ -184,14 +184,14 @@ def parse_alias_title(alias, db, current_period):
     else:
         return None, None
 
-    return f, PeriodAlias('BESTFU', period)
+    return f, PeriodAlias('BESTFU', period, alias)
 
 
 def parse_alias_direct_user(alias, db, current_period):
     mo = re.match(r'^DIRECTUSER(\d+)$', alias)
     if mo is not None:
         pk = int(mo.group(1))
-        return (lambda: db.get_user_by_id(pk)), DirectAlias(pk)
+        return (lambda: db.get_user_by_id(pk)), DirectAlias(pk, alias)
     return None, None
 
 

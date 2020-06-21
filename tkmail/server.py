@@ -9,6 +9,7 @@ import traceback
 from collections import namedtuple, OrderedDict
 
 import email.header
+import email.utils
 from tkmail.util import DecodingDecodedGenerator
 
 from emailtunnel import (
@@ -37,6 +38,8 @@ def now_string():
 
 
 class TKForwarder(SMTPForwarder, MailholeRelayMixin):
+    REWRITE_FROM = True
+
     MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
 
     ERROR_TEMPLATE = """
@@ -216,10 +219,11 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             return 'wrong number of From-headers (%s)' % n_from
         if not envelope.from_domain:
             return 'invalid From-header'
-        dkim_sigs = envelope.message.get_all_headers('DKIM-Signature')
-        if envelope.strict_dmarc_policy and not dkim_sigs:
-            return ('%s has strict DMARC policy, ' % envelope.from_domain +
-                    'but message has no DKIM-Signature header')
+        if not self.REWRITE_FROM:
+            dkim_sigs = envelope.message.get_all_headers('DKIM-Signature')
+            if envelope.strict_dmarc_policy and not dkim_sigs:
+                return ('%s has strict DMARC policy, ' % envelope.from_domain +
+                        'but message has no DKIM-Signature header')
 
     def handle_envelope(self, envelope, peer):
         # Call get_current_period only once per envelope
@@ -234,7 +238,8 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             logger.info('%s', summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
-        self.fix_headers(envelope.message)
+        if not self.REWRITE_FROM:
+            self.fix_headers(envelope.message)
         return super(TKForwarder, self).handle_envelope(envelope, peer)
 
     def fix_headers(self, message):
@@ -309,9 +314,25 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         sender = self.get_envelope_mailfrom(envelope)
         list_name = str(group.origin).lower()
         is_group = isinstance(group.origin, GroupAlias)
-        dkim_protected = self.get_dkim_protected_headers(envelope)
-        return tkmail.headers.get_extra_headers(sender, list_name, is_group,
-                                                skip=dkim_protected)
+        headers = tkmail.headers.get_extra_headers(sender, list_name, is_group)
+        if self.REWRITE_FROM:
+            orig_from = envelope.message.get_header("From")
+            headers.append(("From", self.get_from_header(envelope, group)))
+            headers.append(("Reply-To", orig_from))
+        return headers
+
+    def get_from_header(self, envelope, group):
+        orig_from = envelope.message.get_header("From")
+        orig_to = group.origin.name.lower()
+        parsed = email.utils.getaddresses([orig_from])
+        name = parsed[0][0]
+        addr = "%s@TAAGEKAMMERET.dk" % orig_to.upper()
+        return email.utils.formataddr(("%s via %s" % (name, orig_to), addr))
+
+    def forward(self, original_envelope, message, recipients, sender):
+        if self.REWRITE_FROM:
+            del message.message["DKIM-Signature"]
+        super().forward(original_envelope, message, recipients, sender)
 
     def log_invalid_recipient(self, envelope, exn):
         # Use logging.info instead of the default logging.error
