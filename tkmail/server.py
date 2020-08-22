@@ -333,7 +333,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     def forward(self, original_envelope, message, recipients, sender):
         if self.REWRITE_FROM or self.STRIP_HTML:
             del message.message["DKIM-Signature"]
-        if self.STRIP_HTML and "htmltest" in str(message.subject):
+        if self.STRIP_HTML:
             from emailtunnel.extract_text import get_body_text
 
             t = get_body_text(message.message)
