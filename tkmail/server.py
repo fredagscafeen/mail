@@ -39,6 +39,7 @@ def now_string():
 
 class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     REWRITE_FROM = True
+    STRIP_HTML = True
 
     MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
 
@@ -238,7 +239,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             logger.info('%s', summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
-        if not self.REWRITE_FROM:
+        if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
         return super(TKForwarder, self).handle_envelope(envelope, peer)
 
@@ -330,8 +331,17 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         return email.utils.formataddr(("%s via %s" % (name, orig_to), addr))
 
     def forward(self, original_envelope, message, recipients, sender):
-        if self.REWRITE_FROM:
+        if self.REWRITE_FROM or self.STRIP_HTML:
             del message.message["DKIM-Signature"]
+        if self.STRIP_HTML and "htmltest" in str(message.subject):
+            from emailtunnel.extract_text import get_body_text
+
+            t = get_body_text(message.message)
+            message.set_unique_header("Content-Type", "text/plain")
+            del message.message["Content-Transfer-Encoding"]
+            charset = email.charset.Charset("utf-8")
+            charset.header_encoding = charset.body_encoding = email.charset.QP
+            message.message.set_payload(t, charset=charset)
         super().forward(original_envelope, message, recipients, sender)
 
     def log_invalid_recipient(self, envelope, exn):
