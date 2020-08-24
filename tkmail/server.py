@@ -38,10 +38,11 @@ def now_string():
 
 
 class TKForwarder(SMTPForwarder, MailholeRelayMixin):
-    REWRITE_FROM = True
-    STRIP_HTML = True
+    REWRITE_FROM = False
+    STRIP_HTML = False
 
-    MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
+    # MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
+    MAIL_FROM = None
 
     ERROR_TEMPLATE = """
     This is the mail system of TAAGEKAMMERET.
@@ -307,7 +308,9 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         return group.recipients
 
     def get_envelope_mailfrom(self, envelope, recipients=None):
-        return self.__class__.MAIL_FROM
+        if self.MAIL_FROM is not None:
+            return self.MAIL_FROM
+        return envelope.mailfrom
 
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
