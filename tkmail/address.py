@@ -175,7 +175,7 @@ def parse_alias_title(alias, db, current_period):
         def f():
             return (db.get_bestfu_members('BEST', period) +
                     db.get_bestfu_members('FU', period))
-    elif base in ('BEST', 'FU'):
+    elif base in ('BEST', 'FU', 'EFU'):
         def f():
             return db.get_bestfu_members(base, period)
     elif base in BEST or re.match(r'^E?FU\w+$', base):
