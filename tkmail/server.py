@@ -125,8 +125,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
                 recipients = repr(rcpttos)
             recipients = 'To: ' + recipients
 
-        logger.info("Subject: %r From: %s %s",
-                    str(message.subject), sender, recipients)
+        logger.info("%s", recipients)
 
     def log_delivery(self, message, recipients, sender):
         if all('@' in rcpt for rcpt in recipients):
@@ -154,8 +153,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
 
         self.delivered += 1
 
-        logger.info('Subject: %r To: %s',
-                    str(message.subject), recipients_string)
+        logger.info('To: %s', recipients_string)
 
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != '<>':
