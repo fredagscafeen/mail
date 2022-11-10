@@ -77,6 +77,18 @@ class Database(object):
             WHERE `group_id`='%s'
             """, group_id, column=0)
 
+    def get_current_bestfu_members(self, kind, period):
+        if kind == "BEST" and period == 2022 and self.get_ginka_standin_2022():
+            best = self.get_bestfu_members(kind, period)
+            rm = self.get_user_by_title("INKA", period)
+            return [b for b in best if b not in rm]
+        return self.get_bestfu_members(kind, period)
+
+    def get_current_bestfu_member(self, title, period):
+        if title == "INKA" and period == 2022 and self.get_ginka_standin_2022():
+            return self.get_user_by_title(title, 2021)
+        return self.get_user_by_title(title, period)
+
     def get_bestfu_members(self, kind, period):
         assert kind in ('BEST', 'FU', 'EFU')
         return self._fetchall("""
@@ -131,6 +143,17 @@ class Database(object):
         """)
         if len(rows) == 0:
             raise Exception("No 'GFYEAR' in constance_config")
+        value = rows[0][0]
+        value = base64.b64decode(value)
+        value = pickle.loads(value)
+        return value
+
+    def get_ginka_standin_2022(self):
+        rows = self._fetchall("""
+            SELECT `value` FROM `constance_config` WHERE `key` = "GINKA_STANDIN_2022"
+        """)
+        if len(rows) == 0:
+            return False
         value = rows[0][0]
         value = base64.b64decode(value)
         value = pickle.loads(value)
