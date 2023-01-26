@@ -63,7 +63,13 @@ def archive_report(basename):
     for ext in 'txt json mail'.split():
         filename = '%s.%s' % (basename, ext)
         try:
-            os.rename('error/%s' % filename, 'errorarchive/%s' % filename)
+            try:
+                os.rename('error/%s' % filename, 'errorarchive/%s' % filename)
+            except FileNotFoundError:
+                if ext == "mail":
+                    pass
+                else:
+                    raise
         except Exception:
             logger.exception('Failed to move %s' % filename)
 
