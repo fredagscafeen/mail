@@ -10,7 +10,6 @@ from collections import namedtuple, OrderedDict
 
 import email.header
 import email.utils
-from tkmail.util import DecodingDecodedGenerator
 
 from emailtunnel import (
     SMTPForwarder, Message, InvalidRecipient, Envelope, logger,
@@ -56,9 +55,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
 
     Envelope sender: {mailfrom}
     Envelope recipients: {rcpttos}
-    Envelope message:
-
-    {message}
+    Envelope message hidden.
     """
 
     ERROR_TEMPLATE_CONSTRUCTION = """
@@ -384,7 +381,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             subject = '[TK-mail] Unhandled exception in processing'
             body = textwrap.dedent(self.ERROR_TEMPLATE).format(
                 traceback=tb, mailfrom=envelope.mailfrom,
-                rcpttos=envelope.rcpttos, message=envelope.message)
+                rcpttos=envelope.rcpttos)
 
         else:
             subject = '[TK-mail] Could not construct envelope'
@@ -414,9 +411,6 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         except FileExistsError:
             pass
 
-        with open('error/%s.mail' % now, 'wb') as fp:
-            fp.write(envelope.message.as_bytes())
-
         if inner_envelope is None:
             inner_envelope = envelope
         with open('error/%s.json' % now, 'w') as fp:
@@ -430,16 +424,15 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             json.dump(metadata, fp)
 
         with open('error/%s.txt' % now, 'w') as fp:
-            fp.write('From %s\n' % inner_envelope.mailfrom)
-            fp.write('To %s\n\n' % inner_envelope.rcpttos)
-            fp.write('%s\n' % description)
-
-        with open('error/%s.txt' % now, 'a') as fp:
+            fp.write('From: %s\n' % inner_envelope.mailfrom)
+            fp.write('To: %s\n' % inner_envelope.rcpttos)
             try:
-                g = DecodingDecodedGenerator(fp)
-                g.flatten(inner_envelope.message.message)
-            except Exception as exn:
-                logger.exception(
-                    'Could not write message with DecodingDecodedGenerator')
-                fp.write('[Exception in generator; see %s.mail]\n' %
-                         now)
+                fp.write('Subject: %s\n' % inner_envelope.message.subject)
+            except Exception:
+                fp.write('Unknown subject\n')
+            try:
+                fp.write('Date: %s\n' % inner_envelope.message.get_header('Date'))
+            except Exception:
+                fp.write('Unknown date\n')
+            fp.write('Summary: %s\n' % summary)
+            fp.write('\n%s\n' % description)
