@@ -1,6 +1,6 @@
 def get_extra_headers(sender, list_name, is_group, skip=()):
-    list_requests = 'admin@TAAGEKAMMERET.dk'
-    list_id = '%s.TAAGEKAMMERET.dk' % list_name
+    list_requests = 'admin@fredagscafeen.dk'
+    list_id = '%s.fredagscafeen.dk' % list_name
     unsub = '<mailto:%s?subject=unsubscribe%%20%s>' % (list_requests, list_name)
     help = '<mailto:%s?subject=list-help>' % (list_requests,)
     sub = '<mailto:%s?subject=subscribe%%20%s>' % (list_requests, list_name)

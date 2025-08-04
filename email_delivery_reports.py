@@ -1,4 +1,4 @@
-from tkmail.delivery_reports import email_delivery_reports, dump_stats
+from datmail.delivery_reports import email_delivery_reports, dump_stats
 
 
 # prefixes = {}

@@ -5,7 +5,7 @@ import smtplib
 import email.header
 
 from emailtunnel import SMTPReceiver, Envelope, logger
-from tkmail.server import TKForwarder
+from datmail.server import DatForwarder
 import emailtunnel.send
 
 
@@ -74,7 +74,7 @@ class RecipientTest(object):
             envelopes.append(
                 ('-F', 'recipient_test@localhost',
                  '-f', 'recipient_test@localhost',
-                 '-T', '%s@TAAGEKAMMERET.dk' % recipient,
+                 '-T', '%s@fredagscafeen.dk' % recipient,
                  '-s', '%s_%s' % (id(self), i),
                  '-I', 'X-test-id', self.get_test_id()))
         return envelopes
@@ -135,11 +135,11 @@ class NoSubjectRewriteTest(object):
         self.subject = subject
 
     def get_envelopes(self):
-        from_address = 'mathias.rav@yahoo.com'
+        from_address = 'anders@bruunseverinsen.dk'
         return [
             ('-F', from_address,
              '-f', from_address,
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id(),
              '-I', 'DKIM-Signature', 'dummy-signature',
@@ -186,7 +186,7 @@ class NoListUnsubscribeTest(object):
         return [
             ('-F', from_address,
              '-f', from_address,
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-s', 'test',
              '-I', 'X-test-id', self.get_test_id(),
              '-I', 'DKIM-Signature',
@@ -221,7 +221,7 @@ class RejectSubjectTest(object):
         return [
             ('-F', 'reject-subject-test@localhost',
              '-f', 'reject-subject-test@localhost',
-             '-T', 'admin@TAAGEKAMMERET.dk',
+             '-T', 'admin@fredagscafeen.dk',
              '-s', self.subject,
              '-I', 'Subject', self.subject,
              '-I', 'X-test-id', self.get_test_id())
@@ -248,7 +248,7 @@ class RejectHeaderTest(object):
         return [
             ('-F', 'reject-header-test@localhost',
              '-f', 'reject-header-test@localhost',
-             '-T', 'admin@TAAGEKAMMERET.dk',
+             '-T', 'admin@fredagscafeen.dk',
              '-s', self.get_test_id(),
              '-I', self.field, self.value,
              '-I', 'X-test-id', self.get_test_id())
@@ -273,7 +273,7 @@ class ErroneousSubjectTest(object):
         return [
             ('-F', 'subject-test@localhost',
              '-f', 'subject-test@localhost',
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-s', self.subject,
              '-I', 'X-test-id', self.get_test_id())
         ]
@@ -292,7 +292,7 @@ class NoSubjectTest(object):
         return [
             ('-F', 'no-subject-test@localhost',
              '-f', 'no-subject-test@localhost',
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-I', 'X-test-id', self.get_test_id())
         ]
 
@@ -310,7 +310,7 @@ class ListHeaderTest(object):
         return [
             ('-F', 'list-header-test@localhost',
              '-f', 'list-header-test@localhost',
-             '-T', 'FORM13+FUVE15@TAAGEKAMMERET.dk',
+             '-T', 'form+best@fredagscafeen.dk',
              '-I', 'X-test-id', self.get_test_id())
         ]
 
@@ -342,7 +342,7 @@ class ToHeaderTest(object):
         return [
             ('-F', 'to-header-test@localhost',
              '-f', 'to-header-test@localhost',
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-I', 'To', self.to_addr,
              '-I', 'X-test-id', self.get_test_id())
         ]
@@ -361,7 +361,7 @@ class ReferencesHeaderTest(object):
         return [
             ('-F', 'references-header-test@localhost',
              '-f', 'references-header-test@localhost',
-             '-T', 'FORM13@TAAGEKAMMERET.dk',
+             '-T', 'form@fredagscafeen.dk',
              '-I', 'References', '<space test>',
              '-I', 'X-test-id', self.get_test_id())
         ]
@@ -383,7 +383,7 @@ def main():
     configure_logging()
     relayer_port = 11110
     dumper_port = 11111
-    relayer = TKForwarder('localhost', relayer_port,
+    relayer = DatForwarder('localhost', relayer_port,
                           'localhost', dumper_port)
     # dumper = DumpReceiver('localhost', dumper_port)
     relayer.deliver = deliver_local
@@ -392,16 +392,15 @@ def main():
     relayer.start()
 
     tests = [
-        SameRecipientTest('FORM13', 'FORM2013', 'FORM1314', 'gFORM14'),
-        SameRecipientTest('FORM', 'BEST-CERM-INKA-KASS-nf-PR-SEKR-VC'),
-        MultipleRecipientTest('BEST'),
-        MultipleRecipientTest('BESTFU'),
-        MultipleRecipientTest('FU'),
+        #SameRecipientTest('FORM13', 'FORM2013', 'FORM1314', 'gFORM14'),
+        #SameRecipientTest('FORM', 'BEST-CERM-INKA-KASS-nf-PR-SEKR-VC'),
+        MultipleRecipientTest('best'),
+        MultipleRecipientTest('alle'),
+        #MultipleRecipientTest('FU'),
         MultipleRecipientTest('ADMIN'),
-        MultipleRecipientTest('engineering'),
-        MultipleRecipientTest('revy+revyteknik'),
-        MultipleRecipientTest('tke'),
-        MultipleRecipientTest('form+fu'),
+        #MultipleRecipientTest('engineering'),
+        #MultipleRecipientTest('revy+revyteknik'),
+        #MultipleRecipientTest('form+fu'),
         NoSubjectRewriteTest('Test'),
         NoListUnsubscribeTest(),
         # Invalid encoding a; should be skipped by ecre in email.header
@@ -420,7 +419,7 @@ def main():
         # RejectHeaderTest('Content-Type',
         #                  'multipart/report; report-type=delivery-status'),
         ReferencesHeaderTest(),
-        SingleRecipientTest('FUOUE17'),
+        #SingleRecipientTest('FUOUE17'),
     ]
     test_envelopes = {
         test.get_test_id(): []
@@ -467,7 +466,7 @@ def main():
     else:
         logger.info("All tests succeeded")
 
-    logger.info("tkmail.test finished")
+    logger.info("datmail.test finished")
     relayer.stop()
 
 

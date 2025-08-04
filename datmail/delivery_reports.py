@@ -17,7 +17,7 @@ REPORT_FROM = (
 )
 
 HEADER_PATTERN = (
-    r'List-Id: .*%s' % re.escape('.TAAGEKAMMERET.dk') +
+    r'List-Id: .*%s' % re.escape('.fredagscafeen.dk') +
     r'|Received: from %s\s+' % re.escape('172.18.0.2') +
     r'by %s' % re.escape('emailtunnel.local'))
 HEADER_PATTERN_BYTES = HEADER_PATTERN.encode('ascii')

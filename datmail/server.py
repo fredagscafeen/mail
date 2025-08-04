@@ -15,15 +15,15 @@ from emailtunnel import (
     SMTPForwarder, Message, InvalidRecipient, Envelope, logger,
 )
 
-import tkmail.address
+import datmail.address
 
-from tkmail.address import (
-    GroupAlias,
-    # PeriodAlias, DirectAlias,
-)
-from tkmail.dmarc import has_strict_dmarc_policy
-from tkmail.delivery_reports import parse_delivery_report
-import tkmail.headers
+#from datmail.address import (
+#    GroupAlias,
+#    # PeriodAlias, DirectAlias,
+#)
+from datmail.dmarc import has_strict_dmarc_policy
+from datmail.delivery_reports import parse_delivery_report
+import datmail.headers
 from emailtunnel.mailhole import MailholeRelayMixin
 
 
@@ -36,15 +36,15 @@ def now_string():
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 
 
-class TKForwarder(SMTPForwarder, MailholeRelayMixin):
+class DatForwarder(SMTPForwarder, MailholeRelayMixin):
     REWRITE_FROM = False
     STRIP_HTML = False
 
-    # MAIL_FROM = 'admin@TAAGEKAMMERET.dk'
+    # MAIL_FROM = 'admin@fredagscafeen.dk'
     MAIL_FROM = None
 
     ERROR_TEMPLATE = """
-    This is the mail system of TAAGEKAMMERET.
+    This is the mail system of fredagscafeen.
 
     The following exception was raised when processing the message below:
 
@@ -59,7 +59,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     """
 
     ERROR_TEMPLATE_CONSTRUCTION = """
-    This is the mail system of TAAGEKAMMERET.
+    This is the mail system of fredagscafeen.
 
     The following exception was raised when CONSTRUCTING AN ENVELOPE:
 
@@ -74,11 +74,11 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     """
 
     def __init__(self, *args, **kwargs):
-        self.year = tkmail.address.get_current_period()
+        self.year = datmail.address.get_current_period()
         self.exceptions = set()
         self.delivered = 0
         self.deliver_recipients = {}
-        super(TKForwarder, self).__init__(*args, **kwargs)
+        super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
         # Send everything to mailhole
@@ -86,7 +86,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
 
     def startup_log(self):
         logger.info(
-            'TKForwarder listening on %s:%s, relaying to %s:%s, GF year %s',
+            'DatForwarder listening on %s:%s, relaying to %s:%s, GF year %s',
             self.host, self.port, self.relay_host, self.relay_port, self.year)
 
     def log_receipt(self, peer, envelope):
@@ -102,7 +102,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             recipients_header = OrderedDict()
             for address, formatted, header in envelope.recipients():
                 if address is not None:
-                    address = re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2',
+                    address = re.sub(r'@fredagscafeen\.dk$', r'@@\1\2',
                                      address, 0, re.I)
                     recipients_header.setdefault(header, []).append(address)
             recipients = ' '.join(
@@ -112,7 +112,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             logger.exception('Envelope.recipients() processing failed')
             rcpttos = envelope.rcpttos
             if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
-                rcpttos = [re.sub(r'@(T)AAGE(K)AMMERET\.dk$', r'@@\1\2',
+                rcpttos = [re.sub(r'@fredagscafeen\.dk$', r'@@\1\2',
                                   address, 0, re.I)
                            for address in rcpttos]
                 if len(rcpttos) == 1:
@@ -157,7 +157,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         if envelope.mailfrom != '<>':
             return
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
-        if rcpttos != ('admin@taagekammeret.dk',):
+        if rcpttos != ('admin@fredagscafeen.dk',):
             return
         report = parse_delivery_report(envelope.message.message)
         if not report:
@@ -183,7 +183,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             return 'Content-Type looks like a DSN'
 
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
-        to_admin = rcpttos == ('admin@taagekammeret.dk',)
+        to_admin = rcpttos == ('admin@fredagscafeen.dk',)
         subject = envelope.message.subject
         subject_str = str(subject)
         delivery_status_subject = (
@@ -224,20 +224,20 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
 
     def handle_envelope(self, envelope, peer):
         # Call get_current_period only once per envelope
-        self.year = tkmail.address.get_current_period()
+        self.year = datmail.address.get_current_period()
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)
         envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
         reject_reason = self.reject(envelope)
         if reject_reason:
-            summary = 'Rejected by TKForwarder.reject (%s)' % reject_reason
+            summary = 'Rejected by DatForwarder.reject (%s)' % reject_reason
             logger.info('%s', summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
-        return super(TKForwarder, self).handle_envelope(envelope, peer)
+        return super(DatForwarder, self).handle_envelope(envelope, peer)
 
     def fix_headers(self, message):
         # Fix References: header that has been broken by Postfix.
@@ -290,7 +290,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
 
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split('@')
-        recipients, origin = tkmail.address.translate_recipient(
+        recipients, origin = datmail.address.translate_recipient(
             self.year, name, list_ids=True)
         if not recipients:
             logger.info("%s resolved to the empty list", name)
@@ -312,8 +312,9 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
         list_name = str(group.origin).lower()
-        is_group = isinstance(group.origin, GroupAlias)
-        headers = tkmail.headers.get_extra_headers(sender, list_name, is_group)
+        #is_group = isinstance(group.origin, GroupAlias)
+        is_group = False
+        headers = datmail.headers.get_extra_headers(sender, list_name, is_group)
         if self.REWRITE_FROM:
             orig_from = envelope.message.get_header("From")
             headers.append(("From", self.get_from_header(envelope, group)))
@@ -325,7 +326,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         orig_to = group.origin.name.lower()
         parsed = email.utils.getaddresses([orig_from])
         name = parsed[0][0]
-        addr = "%s@TAAGEKAMMERET.dk" % orig_to.upper()
+        addr = "%s@fredagscafeen.dk" % orig_to.upper()
         return email.utils.formataddr(("%s via %s" % (name, orig_to), addr))
 
     def forward(self, original_envelope, message, recipients, sender):
@@ -372,19 +373,19 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
             self.forward_to_admin(envelope, str_data, tb)
 
     def forward_to_admin(self, envelope, str_data, tb):
-        # admin_emails = tkmail.address.get_admin_emails()
-        admin_emails = ['mathiasrav@gmail.com']
+        # admin_emails = datmail.address.get_admin_emails()
+        admin_emails = ['anders@bruunseverinsen.dk']
 
-        sender = recipient = 'admin@TAAGEKAMMERET.dk'
+        sender = recipient = 'admin@fredagscafeen.dk'
 
         if envelope:
-            subject = '[TK-mail] Unhandled exception in processing'
+            subject = '[datmail] Unhandled exception in processing'
             body = textwrap.dedent(self.ERROR_TEMPLATE).format(
                 traceback=tb, mailfrom=envelope.mailfrom,
                 rcpttos=envelope.rcpttos)
 
         else:
-            subject = '[TK-mail] Could not construct envelope'
+            subject = '[datmail] Could not construct envelope'
             body = textwrap.dedent(self.ERROR_TEMPLATE_CONSTRUCTION).format(
                 traceback=tb, data=str_data)
 
@@ -393,7 +394,7 @@ class TKForwarder(SMTPForwarder, MailholeRelayMixin):
         admin_message.add_header('Auto-Submitted', 'auto-replied')
 
         try:
-            headers = tkmail.headers.get_extra_headers(sender, 'tkmailerror',
+            headers = datmail.headers.get_extra_headers(sender, 'datmailerror',
                                                        is_group=True)
             for k, v in headers:
                 admin_message.add_header(k, v)

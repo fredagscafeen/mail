@@ -9,14 +9,14 @@ import textwrap
 import smtplib
 
 from emailtunnel import Message, decode_any_header, logger
-from tkmail.delivery_reports import parse_delivery_report
-import tkmail.headers
+from datmail.delivery_reports import parse_delivery_report
+import datmail.headers
 
 try:
-    from tkmail.address import get_admin_emails
+    from datmail.address import get_admin_emails
 except ImportError:
-    print("Cannot import tkmail.address; stubbing out get_admin_emails")
-    get_admin_emails = lambda: ['mathiasrav@gmail.com']
+    print("Cannot import datmail.address; stubbing out get_admin_emails")
+    get_admin_emails = lambda: ['anders@bruunseverinsen.dk']
 
 
 MAX_SIZE = 10
@@ -122,7 +122,7 @@ def main():
 
     admins = get_admin_emails()
 
-    # admins = ['mathiasrav@gmail.com']
+    # admins = ['anders@bruunseverinsen.dk']
 
     keys = 'mailfrom rcpttos subject date summary mtime basename'.split()
 
@@ -154,7 +154,7 @@ def main():
     # to a very spammy-looking subject line in the body.
 
     body = textwrap.dedent("""
-    This is the mail system of TAAGEKAMMERET.
+    This is the mail system of fredagscafeen.
 
     The following emails were not delivered to anyone.
 
@@ -177,11 +177,11 @@ def main():
     {lists[basename]}
     """).format(lists=lists)
 
-    sender = recipient = 'admin@TAAGEKAMMERET.dk'
+    sender = recipient = 'admin@fredagscafeen.dk'
     message = Message.compose(
-        sender, recipient, '[TK-admin] Failed email delivery', body)
+        sender, recipient, '[datadmin] Failed email delivery', body)
 
-    headers = tkmail.headers.get_extra_headers(sender, 'tkmailmonitor',
+    headers = datmail.headers.get_extra_headers(sender, 'datmailmonitor',
                                                is_group=True)
     for k, v in headers:
         message.add_header(k, v)

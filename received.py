@@ -3,20 +3,15 @@ import re
 import email
 
 
-BY_POSTFIX = r'by pulerau\.scitechtinget\.dk \(Postfix\) '
+BY_POSTFIX = r''
 SMTP_ID = r'with E?SMTPS? id [+A-Za-z0-9-]+'
-FOR = r'(( |\n\t)for <[^@]+@(taagekammeret|TAAGEKAMMERET)\.(dk|DK)>)?;( |\n\t)'
+FOR = r'(( |\n\t)for <[^@]+@(fredagscafeen)\.(dk|DK)>)?;( |\n\t)'
 TIME = r'[A-Za-z0-9, :+]+ \(CES?T\)$'
 
 
 patterns = [
     r'^from localhost \(localhost\.localdomain \[127\.0\.0\.1\]\)\n\t' +
     BY_POSTFIX +
-    SMTP_ID + FOR + TIME,
-
-    r'^from pulerau\.scitechtinget\.dk \(\[127\.0\.0\.1\]\)\n\t' +
-    r'by localhost \(pulerau\.scitechtinget\.dk \[127\.0\.0\.1\]\) ' +
-    r'\(amavisd-new, port 10024\)\n\t' +
     SMTP_ID + FOR + TIME,
 
     r'^from (?P<helo_name>\S+) ' +
@@ -37,8 +32,6 @@ for f in os.listdir('errorarchive'):
     if type(received) != list:
         raise TypeError(received)
     if 'emailtunnel' in str(received[0]):
-        continue
-    if 'MAILER-DAEMON@pulerau.scitechtinget.dk' in str(message.get('From')):
         continue
     assert len(received) >= len(patterns), (received, f)
     for r, p in zip(received, patterns):

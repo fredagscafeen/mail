@@ -4,9 +4,7 @@ __pycache__
 /error
 /errorarchive
 /monitor.log
-/tkmail.log
-/tkmail/config.py
+/datmail.log
+/datmail/config.py
 *.pyc
 /insane
-/prodekanus/venv
-/prodekanus/mailhole_key.env
