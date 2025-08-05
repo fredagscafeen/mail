@@ -1,5 +1,24 @@
 ## A lightweight email forwarding framework
 
+### Setup
+
+#### To run project locally
+
+A prerequisite here, is to have **Python 3.8.10** installed and in PATH. Having this exact version ensures
+smooth compatibility with the dependencies and the server, working with and running that version.
+A tip is to install [pyenv](https://github.com/pyenv/pyenv), which makes it easy to install the specific version, and toggle between
+versions.
+
+After that, you are ready to follow the steps below:
+
+1. checkout project from vcs: `git clone git@github.com:fredagscafeen/mail.git`
+2. setup virtual env: `python3 -mvenv ~/.cache/venvs/fredagscafeen-mail`
+3. activate virtual env: `source ~/.cache/venvs/fredagscafeen-mail/bin/activate`
+4. install `pip-tools`: `pip install pip-tools`
+5. install `pkg-config`: `brew install mysql pkg-config`
+5. install dependencies: `pip-sync requirements.txt dev-requirements.txt`
+6. install pre-commit hook: `pre-commit install`
+
 ### Introduction
 
 `emailtunnel` is a small Python 3 framework that uses the `smtplib` and `email`
