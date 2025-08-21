@@ -1,13 +1,11 @@
-import MySQLdb
-from datmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
-import pickle
-import base64
+import sqlite3
+
+from datmail.config import DATABASE
 
 
 class Database(object):
     def __init__(self):
-        self._mysql = MySQLdb.connect(host=HOSTNAME, user=USERNAME,
-                                      passwd=PASSWORD, db=DATABASE)
+        self._mysql = sqlite3.connect(DATABASE)
         self._cursor = self._mysql.cursor()
 
     def _execute(self, statement, *args):
@@ -19,7 +17,7 @@ class Database(object):
         self._cursor.execute(sql)
 
     def _fetchall(self, *args, **kwargs):
-        column = kwargs.pop('column', None)
+        column = kwargs.pop("column", None)
         self._execute(*args)
         rows = self._cursor.fetchall()
         if column is not None:
@@ -28,36 +26,40 @@ class Database(object):
             return list(rows)
 
     def get_email_addresses(self, id_list):
-        # TODO:
-        id_string = ','.join(str(each) for each in id_list)
-        return self._fetchall("""
-            SELECT `email` FROM `idm_profile`
+        id_string = ",".join(str(each) for each in id_list)
+        return self._fetchall(
+            """
+            SELECT `email` FROM `bartenders_bartender`
             WHERE `id` IN (%s)
-            AND `allow_direct_email` = TRUE
             AND `email` != ""
-            """, id_string, column=0)
+            """,
+            id_string,
+            column=0,
+        )
 
     def get_admin_emails(self):
-        # TODO:
-        return self._fetchall("""
-            SELECT `idm_profile`.`email`
-            FROM `idm_profile`, `idm_group`, `idm_profile_groups`
-            WHERE `idm_group`.name = "ADMIN"
-            AND `idm_profile_groups`.`group_id`=`idm_group`.`id`
-            AND `idm_profile_groups`.`profile_id`= `idm_profile`.`id`
-            """, column=0)
+        return self._fetchall(
+            """
+            SELECT `email`
+            FROM `auth_user`
+            WHERE `auth_user`.is_superuser = TRUE
+            """,
+            column=0,
+        )
 
-    def get_best_members(self, period):
-        return self._fetchall("""
-            SELECT `bartender_id` FROM `board_members`
-            WHERE `period` = '%s'
-            """, period, column=0)
+    def get_mailinglists(self):
+        return self._fetchall(
+            """
+            SELECT `id`, `name` FROM `mail_mailinglist`
+            """
+        )
 
-    def get_current_best_period(self):
-        rows = self._fetchall("""
-            SELECT `board_member_period` FROM `bartenders`
-        """)
-        if len(rows) == 0:
-            raise Exception("No current best period found!")
-        current = rows[0]
-        return current
+    def get_mailinglist_members(self, id):
+        return self._fetchall(
+            """
+            SELECT `bartender_id` FROM `mail_mailinglist_members`
+            WHERE `mailinglist_id` = %s
+            """,
+            id,
+            column=0,
+        )

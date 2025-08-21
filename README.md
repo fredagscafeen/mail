@@ -15,7 +15,6 @@ After that, you are ready to follow the steps below:
 2. setup virtual env: `python3 -mvenv ~/.cache/venvs/fredagscafeen-mail`
 3. activate virtual env: `source ~/.cache/venvs/fredagscafeen-mail/bin/activate`
 4. install `pip-tools`: `pip install pip-tools`
-5. install `pkg-config`: `brew install mysql pkg-config`
 5. install dependencies: `pip-sync requirements.txt dev-requirements.txt`
 6. install pre-commit hook: `pre-commit install`
 

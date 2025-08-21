@@ -1,18 +1,18 @@
-from datetime import datetime
 import re
 from collections import namedtuple
 
 from emailtunnel import InvalidRecipient
+
 import datmail.database
 from datmail.config import ADMINS
 
+GroupAliasBase = namedtuple("GroupAlias", "name")
 
-PeriodAliasBase = namedtuple("PeriodAlias", "kind period name")
 
-
-class PeriodAlias(PeriodAliasBase):
+class GroupAlias(GroupAliasBase):
     def __str__(self):
-        return '%s%s' % (self.kind, self.period)
+        return "%s" % (self.name)
+
 
 def get_admin_emails():
     """Resolve the group "admin" or fallback if the database is unavailable.
@@ -33,18 +33,15 @@ def get_admin_emails():
     return email_addresses
 
 
-def translate_recipient(name, datetime=datetime.today(), list_ids=False):
-    """Translate recipient `name` in `datetime`.
+def translate_recipient(name, list_ids=False):
+    """Translate recipient `name`.
 
-    >>> translate_recipient("form")
-    ["anders@bruunseverinsen.dk"]
-
-    >>> translate_recipient("web", 2024-07-01)
-    ["anders@bruunseverinsen.dk"]
+    >>> translate_recipient("best")
+    ["anders@bruunseverinsen.dk", ...]
     """
 
     db = datmail.database.Database()
-    recipient_ids, origin = parse_recipient(name.upper(), db, datetime)
+    recipient_ids, origin = parse_recipient(name.lower(), db)
     assert isinstance(recipient_ids, list) and isinstance(origin, list)
     assert len(recipient_ids) == len(origin)
     email_addresses = db.get_email_addresses(recipient_ids)
@@ -54,7 +51,7 @@ def translate_recipient(name, datetime=datetime.today(), list_ids=False):
         return email_addresses
 
 
-def parse_recipient(recipient, db, datetime=datetime.today()):
+def parse_recipient(recipient, db):
     """
     Evaluate each address which is divided by + and -.
     Collects the resulting sets of not matched and the set of spam addresses.
@@ -63,10 +60,10 @@ def parse_recipient(recipient, db, datetime=datetime.today()):
 
     personIdOps = []
     invalid_recipients = []
-    for sign, name in re.findall(r'([+-]?)([^+-]+)', recipient):
+    for sign, name in re.findall(r"([+-]?)([^+-]+)", recipient):
         try:
-            personIds, source = parse_alias(name, db, datetime)
-            personIdOps.append((sign or '+', personIds, source))
+            personIds, source = parse_alias(name, db)
+            personIdOps.append((sign or "+", personIds, source))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
 
@@ -76,7 +73,7 @@ def parse_recipient(recipient, db, datetime=datetime.today()):
     recipient_ids = set()
     origin = {}
     for sign, personIds, source in personIdOps:
-        if sign == '+':  # union
+        if sign == "+":  # union
             recipient_ids = recipient_ids.union(personIds)
             for p in personIds:
                 origin[p] = source
@@ -90,27 +87,20 @@ def parse_recipient(recipient, db, datetime=datetime.today()):
         raise InvalidRecipient(recipient)
     return recipient_ids, [origin[r] for r in recipient_ids]
 
-def parse_alias_title(alias, db, period):
-    if alias == "best":
-        def f():
-            return db.get_current_best_members(period)
-    elif alias == "alle":
-        def f():
-            return db.get_current_bartenders(period)
-    else:
-        return None, None
-    return f, PeriodAlias('PeriodAlias', period, alias)
 
-"""
-def parse_alias_direct_user(alias, db, current_period):
-    mo = re.match(r'^DIRECTUSER(\d+)$', alias)
-    if mo is not None:
-        pk = int(mo.group(1))
-        return (lambda: db.get_user_by_id(pk)), DirectAlias(pk, alias)
+def parse_alias_group(alias, db):
+    mailinglists = db.get_mailinglists()
+    for id, name in mailinglists:
+        if name == alias:
+
+            def f():
+                return db.get_mailinglist_members(id)
+
+            return f, GroupAlias(alias)
     return None, None
-"""
 
-def parse_alias(alias, db, current_period):
+
+def parse_alias(alias, db):
     """
     Evaluates the alias, returning a non-empty list of person IDs.
     Raise exception if a spam or no match email.
@@ -118,13 +108,11 @@ def parse_alias(alias, db, current_period):
 
     # Try these functions until one matches
     matchers = [
-        #parse_alias_group,
-        parse_alias_title,
-        #parse_alias_direct_user,
+        parse_alias_group,
     ]
 
     for f in matchers:
-        match, canonical = f(alias, db, current_period)
+        match, canonical = f(alias, db)
         if match is not None:
             break
     else:

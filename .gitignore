@@ -8,3 +8,4 @@ __pycache__
 /datmail/config.py
 *.pyc
 /insane
+db.sqlite3

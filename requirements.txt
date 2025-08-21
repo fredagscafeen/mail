@@ -20,8 +20,6 @@ emailtunnel @ git+https://github.com/TK-IT/emailtunnel.git
     # via -r requirements.in
 idna==3.10
     # via requests
-mysqlclient==2.2.7
-    # via -r requirements.in
 requests==2.32.4
     # via -r requirements.in
 urllib3==2.2.3

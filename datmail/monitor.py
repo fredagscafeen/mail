@@ -1,22 +1,23 @@
-import os
-import sys
-import json
-import time
-import email
-import logging
 import argparse
-import textwrap
+import email
+import json
+import logging
+import os
 import smtplib
+import sys
+import textwrap
+import time
 
 from emailtunnel import Message, decode_any_header, logger
-from datmail.delivery_reports import parse_delivery_report
+
 import datmail.headers
+from datmail.delivery_reports import parse_delivery_report
 
 try:
     from datmail.address import get_admin_emails
 except ImportError:
     print("Cannot import datmail.address; stubbing out get_admin_emails")
-    get_admin_emails = lambda: ['anders@bruunseverinsen.dk']
+    get_admin_emails = lambda: ["anders@bruunseverinsen.dk"]
 
 
 MAX_SIZE = 10
@@ -27,62 +28,63 @@ def configure_logging(use_tty):
     if use_tty:
         handler = logging.StreamHandler(None)
     else:
-        handler = logging.FileHandler('monitor.log', 'a')
-    fmt = '[%(asctime)s %(levelname)s] %(message)s'
+        handler = logging.FileHandler("monitor.log", "a")
+    fmt = "[%(asctime)s %(levelname)s] %(message)s"
     datefmt = None
-    formatter = logging.Formatter(fmt, datefmt, '%')
+    formatter = logging.Formatter(fmt, datefmt, "%")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
 
 
 def get_report(basename):
-    with open('error/%s.json' % basename) as fp:
+    with open("error/%s.json" % basename) as fp:
         metadata = json.load(fp)
 
     try:
-        with open('error/%s.mail' % basename, 'rb') as fp:
+        with open("error/%s.mail" % basename, "rb") as fp:
             message = email.message_from_binary_file(fp)
         report = parse_delivery_report(message)
         if report:
-            metadata['summary'] = report.notification
-            metadata['subject'] = str(decode_any_header(
-                report.message.get('Subject', '')))
+            metadata["summary"] = report.notification
+            metadata["subject"] = str(
+                decode_any_header(report.message.get("Subject", ""))
+            )
     except Exception:
-        logger.exception('parse_delivery_report failed')
+        logger.exception("parse_delivery_report failed")
 
-    mtime = os.stat('error/%s.txt' % basename).st_mtime
+    mtime = os.stat("error/%s.txt" % basename).st_mtime
 
     report = dict(metadata)
-    report['mtime'] = int(mtime)
-    report['basename'] = basename
+    report["mtime"] = int(mtime)
+    report["basename"] = basename
     return report
 
 
 def archive_report(basename):
-    for ext in 'txt json mail'.split():
-        filename = '%s.%s' % (basename, ext)
+    for ext in "txt json mail".split():
+        filename = "%s.%s" % (basename, ext)
         try:
             try:
-                os.rename('error/%s' % filename, 'errorarchive/%s' % filename)
+                os.rename("error/%s" % filename, "errorarchive/%s" % filename)
             except FileNotFoundError:
                 if ext == "mail":
                     pass
                 else:
                     raise
         except Exception:
-            logger.exception('Failed to move %s' % filename)
+            logger.exception("Failed to move %s" % filename)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--dry-run', action='store_true')
+    parser.add_argument("-n", "--dry-run", action="store_true")
     args = parser.parse_args()
 
     configure_logging(args.dry_run)
 
     try:
-        filenames = os.listdir('error')
+        filenames = os.listdir("error")
     except OSError:
         filenames = []
 
@@ -91,7 +93,7 @@ def main():
     reports = []
 
     for filename in sorted(filenames):
-        if not filename.endswith('.txt'):
+        if not filename.endswith(".txt"):
             continue
 
         basename = filename[:-4]
@@ -100,61 +102,62 @@ def main():
             report = get_report(basename)
         except Exception:
             exc_value = sys.exc_info()[1]
-            logger.exception('get_report failed')
+            logger.exception("get_report failed")
             report = {
-                'subject': '<get_report(%r) failed: %s>'
-                           % (basename, exc_value),
-                'basename': basename,
+                "subject": "<get_report(%r) failed: %s>" % (basename, exc_value),
+                "basename": basename,
             }
         else:
-            oldest = min(oldest, report['mtime'])
+            oldest = min(oldest, report["mtime"])
 
         reports.append(report)
 
     age = now - oldest
 
-    logger.info('%s report(s) / age %s (limit is %s / %s)' %
-                (len(reports), age, MAX_SIZE, MAX_DAYS * 24 * 60 * 60))
+    logger.info(
+        "%s report(s) / age %s (limit is %s / %s)"
+        % (len(reports), age, MAX_SIZE, MAX_DAYS * 24 * 60 * 60)
+    )
 
-    if (not args.dry_run and (len(reports) <= MAX_SIZE and
-                              age <= MAX_DAYS * 24 * 60 * 60)):
+    if not args.dry_run and (
+        len(reports) <= MAX_SIZE and age <= MAX_DAYS * 24 * 60 * 60
+    ):
         return
 
     admins = get_admin_emails()
 
     # admins = ['anders@bruunseverinsen.dk']
 
-    keys = 'mailfrom rcpttos subject date summary mtime basename'.split()
+    keys = "mailfrom rcpttos subject date summary mtime basename".split()
 
     for report in reports:
         try:
-            mailfrom = report['mailfrom']
+            mailfrom = report["mailfrom"]
         except KeyError:
             continue
         # Sometimes the sender domain names are spam domains
         # which can probably cause Google to block the email
         # report. Mask sender domain names to avoid this.
-        report['mailfrom'] = mailfrom.replace('.', ' ').replace('@', ' ')
+        report["mailfrom"] = mailfrom.replace(".", " ").replace("@", " ")
 
     lists = {}
     for k in keys:
-        if k == 'rcpttos':
+        if k == "rcpttos":
             sort_key = lambda x: tuple(x[1].get(k) or [])
         else:
-            sort_key = lambda x: x[1].get(k) or ''
-        lists[k] = '\n'.join(
-            '%s. %s' % (i + 1, report.get(k))
-            for i, report in sorted(
-                enumerate(reports),
-                key=sort_key
-            ))
+            sort_key = lambda x: x[1].get(k) or ""
+        lists[k] = "\n".join(
+            "%s. %s" % (i + 1, report.get(k))
+            for i, report in sorted(enumerate(reports), key=sort_key)
+        )
 
     # "Subject" section removed Apr 20, 2017 since Google blocked
     # one of these report emails for having spam content, likely due
     # to a very spammy-looking subject line in the body.
 
-    body = textwrap.dedent("""
-    This is the mail system of fredagscafeen.
+    body = textwrap.dedent(
+        """
+    This is the mail system of Fredagscaféen.
 
     The following emails were not delivered to anyone.
 
@@ -175,14 +178,15 @@ def main():
 
     Local reference in errorarchive folder:
     {lists[basename]}
-    """).format(lists=lists)
+    """
+    ).format(lists=lists)
 
-    sender = recipient = 'admin@fredagscafeen.dk'
+    sender = recipient = "admin@fredagscafeen.dk"
     message = Message.compose(
-        sender, recipient, '[datadmin] Failed email delivery', body)
+        sender, recipient, "[datadmin] Failed email delivery", body
+    )
 
-    headers = datmail.headers.get_extra_headers(sender, 'datmailmonitor',
-                                               is_group=True)
+    headers = datmail.headers.get_extra_headers(sender, "datmailmonitor", is_group=True)
     for k, v in headers:
         message.add_header(k, v)
 
@@ -193,7 +197,7 @@ def main():
         print(str(message))
         return
 
-    relay_hostname = '127.0.0.1'
+    relay_hostname = "127.0.0.1"
     relay_port = 25
     relay_host = smtplib.SMTP(relay_hostname, relay_port)
     relay_host.set_debuglevel(0)
@@ -208,17 +212,17 @@ def main():
 
     # If no exception was raised, the following code is run
     for report in reports:
-        archive_report(report['basename'])
+        archive_report(report["basename"])
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logger.info('monitor exited via KeyboardInterrupt')
+        logger.info("monitor exited via KeyboardInterrupt")
         raise
     except SystemExit:
         raise
     except:
-        logger.exception('monitor exited via exception')
+        logger.exception("monitor exited via exception")
         raise
