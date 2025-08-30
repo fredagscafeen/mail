@@ -8,4 +8,7 @@ __pycache__
 /datmail/config.py
 *.pyc
 /insane
-db.sqlite3
+
+# Docker
+.dockerignore
+docker-compose.override.yml

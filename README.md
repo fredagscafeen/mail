@@ -2,6 +2,19 @@
 
 ### Setup
 
+#### To run project with Docker (Recommended)
+
+1. checkout project from vcs: `git clone git@github.com:fredagscafeen/mail.git`
+2. copy config file: `cp datmail/config.sample.py datmail/config.py`
+3. edit the config file to match your setup
+4. build and run with docker-compose: `docker-compose up --build`
+
+The mailserver will be available on port 9000.
+
+To run in the background: `docker-compose up -d --build`
+To view logs: `docker-compose logs -f mailserver`
+To stop: `docker-compose down`
+
 #### To run project locally
 
 A prerequisite here, is to have **Python 3.8.10** installed and in PATH. Having this exact version ensures
