@@ -1,15 +1,12 @@
-import psycopg2
-import psycopg2.extras
+import sqlite3
 
-from datmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
+from datmail.config import DATABASE
 
 
 class Database(object):
     def __init__(self):
-        self._conn = psycopg2.connect(
-            host=HOSTNAME, database=DATABASE, user=USERNAME, password=PASSWORD
-        )
-        self._cursor = self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        self._mysql = sqlite3.connect(DATABASE)
+        self._cursor = self._mysql.cursor()
 
     def _execute(self, statement, *args):
         if args:
@@ -18,7 +15,6 @@ class Database(object):
             sql = statement
 
         self._cursor.execute(sql)
-        self._conn.commit()
 
     def _fetchall(self, *args, **kwargs):
         column = kwargs.pop("column", None)
@@ -33,9 +29,9 @@ class Database(object):
         id_string = ",".join(str(each) for each in id_list)
         return self._fetchall(
             """
-            SELECT "email" FROM "bartenders_bartender"
-            WHERE "id" IN (%s)
-            AND "email" != ''
+            SELECT `email` FROM `bartenders_bartender`
+            WHERE `id` IN (%s)
+            AND `email` != ""
             """,
             id_string,
             column=0,
@@ -44,9 +40,9 @@ class Database(object):
     def get_admin_emails(self):
         return self._fetchall(
             """
-            SELECT "email"
-            FROM "auth_user"
-            WHERE "auth_user".is_superuser = TRUE
+            SELECT `email`
+            FROM `auth_user`
+            WHERE `auth_user`.is_superuser = TRUE
             """,
             column=0,
         )
@@ -54,15 +50,15 @@ class Database(object):
     def get_mailinglists(self):
         return self._fetchall(
             """
-            SELECT "id", "name" FROM "mail_mailinglist"
+            SELECT `id`, `name` FROM `mail_mailinglist`
             """
         )
 
     def get_mailinglist_members(self, id):
         return self._fetchall(
             """
-            SELECT "bartender_id" FROM "mail_mailinglist_members"
-            WHERE "mailinglist_id" = %s
+            SELECT `bartender_id` FROM `mail_mailinglist_members`
+            WHERE `mailinglist_id` = %s
             """,
             id,
             column=0,
