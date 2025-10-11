@@ -1,3 +1,6 @@
+/.git
+
+# From .gitignore
 .*.swp
 .swp
 __pycache__
