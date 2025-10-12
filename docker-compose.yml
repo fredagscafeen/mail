@@ -15,3 +15,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=db
+
+networks:
+  traefik:
+    name: web_default
+    external: true
