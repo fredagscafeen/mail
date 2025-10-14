@@ -9,14 +9,7 @@ services:
       - ./errorarchive:/app/errorarchive
       - ./datmail/config.py:/app/datmail/config.py
       - ./datmail.log:/app/datmail.log
-      - ./db_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_HOST=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=db
 
 networks:
   traefik:
-    name: web_default
     external: true

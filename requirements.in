@@ -1,4 +1,3 @@
 git+https://github.com/TK-IT/emailtunnel.git#egg=emailtunnel
 requests
 git+https://github.com/Mortal/dmarc_policy_parser.git#egg=dmarc_policy_parser
-psycopg2
