@@ -11,7 +11,6 @@ import traceback
 from collections import OrderedDict, namedtuple
 
 from emailtunnel import Envelope, InvalidRecipient, Message, SMTPForwarder, logger
-from emailtunnel.mailhole import MailholeRelayMixin
 
 import datmail.address
 import datmail.headers
@@ -27,7 +26,7 @@ def now_string():
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 
 
-class DatForwarder(SMTPForwarder, MailholeRelayMixin):
+class DatForwarder(SMTPForwarder):
     REWRITE_FROM = False
     STRIP_HTML = False
 
