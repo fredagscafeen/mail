@@ -98,9 +98,7 @@ class DatForwarder(SMTPForwarder, MailholeRelayMixin):
             recipients_header = OrderedDict()
             for address, formatted, header in envelope.recipients():
                 if address is not None:
-                    address = re.sub(
-                        r"@fredagscafeen\.dk$", r"@@\1\2", address, 0, re.I
-                    )
+                    address = re.sub(r"@fredagscafeen\.dk$", r"@@", address, 0, re.I)
                     recipients_header.setdefault(header, []).append(address)
             recipients = " ".join(
                 "%s: <%s>" % (header, ">, <".join(group))
@@ -111,7 +109,7 @@ class DatForwarder(SMTPForwarder, MailholeRelayMixin):
             rcpttos = envelope.rcpttos
             if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
                 rcpttos = [
-                    re.sub(r"@fredagscafeen\.dk$", r"@@\1\2", address, 0, re.I)
+                    re.sub(r"@fredagscafeen\.dk$", r"@@", address, 0, re.I)
                     for address in rcpttos
                 ]
                 if len(rcpttos) == 1:
