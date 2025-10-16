@@ -98,7 +98,7 @@ class DatForwarder(SMTPForwarder, MailholeRelayMixin):
             recipients_header = OrderedDict()
             for address, formatted, header in envelope.recipients():
                 if address is not None:
-                    address = re.sub(r"@fredagscafeen\.dk$", r"@@", address, 0, re.I)
+                    address = re.sub(r"@fredagscafeen\.dk$", r"", address, 0, re.I)
                     recipients_header.setdefault(header, []).append(address)
             recipients = " ".join(
                 "%s: <%s>" % (header, ">, <".join(group))
@@ -109,7 +109,7 @@ class DatForwarder(SMTPForwarder, MailholeRelayMixin):
             rcpttos = envelope.rcpttos
             if type(rcpttos) == list and all(type(x) == str for x in rcpttos):
                 rcpttos = [
-                    re.sub(r"@fredagscafeen\.dk$", r"@@", address, 0, re.I)
+                    re.sub(r"@fredagscafeen\.dk$", r"", address, 0, re.I)
                     for address in rcpttos
                 ]
                 if len(rcpttos) == 1:
@@ -222,8 +222,8 @@ class DatForwarder(SMTPForwarder, MailholeRelayMixin):
                 )
 
     def handle_envelope(self, envelope, peer):
-        # Call get_current_period only once per envelope
-        self.year = datmail.address.get_current_period()
+        # Get year only once per envelope
+        self.year = datetime.datetime.now().year
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)
