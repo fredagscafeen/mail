@@ -9,7 +9,3 @@ services:
       - ./errorarchive:/app/errorarchive
       - ./datmail/config.py:/app/datmail/config.py
       - ./datmail.log:/app/datmail.log
-
-networks:
-  traefik:
-    external: true
