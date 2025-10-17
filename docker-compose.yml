@@ -2,15 +2,11 @@ services:
   app:
     build: .
     restart: always
-    ports:
-      - "9000:9000"  # SMTP listen port
+    network_mode: "host"
+    #ports:
+    #  - "9000:9000"  # SMTP listen port
     volumes:
       - ./error:/app/error
       - ./errorarchive:/app/errorarchive
       - ./datmail/config.py:/app/datmail/config.py
       - ./datmail.log:/app/datmail.log
-
-networks:
-  traefik:
-    name: host
-    external: true
