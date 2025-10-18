@@ -2,7 +2,8 @@ services:
   app:
     build: .
     restart: always
-    network_mode: "host"
+    ports:
+      - "9000:9000" # SMTP
     volumes:
       - ./error:/app/error
       - ./errorarchive:/app/errorarchive
