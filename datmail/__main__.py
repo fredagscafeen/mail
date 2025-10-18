@@ -18,7 +18,7 @@ def configure_logging():
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--port", type=int, default=25, help="Relay port")
+parser.add_argument("-p", "--port", type=int, default=587, help="Relay port")
 parser.add_argument("-P", "--listen-port", type=int, default=9000, help="Listen port")
 
 
@@ -26,7 +26,7 @@ def main():
     configure_logging()
     args = parser.parse_args()
 
-    receiver_host = "0.0.0.0"
+    receiver_host = "127.0.0.1"
     receiver_port = args.listen_port
     relay_host = "host.docker.internal"
     relay_port = args.port
