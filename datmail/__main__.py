@@ -18,7 +18,7 @@ def configure_logging():
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--port", type=int, default=587, help="Relay port")
+parser.add_argument("-p", "--port", type=int, default=25, help="Relay port")
 parser.add_argument("-P", "--listen-port", type=int, default=9000, help="Listen port")
 
 
