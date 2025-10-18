@@ -7,7 +7,11 @@ from datmail.config import HOSTNAME, USERNAME, PASSWORD, DATABASE
 class Database(object):
     def __init__(self):
         self._conn = psycopg2.connect(
-            host=HOSTNAME, database=DATABASE, user=USERNAME, password=PASSWORD
+            host=HOSTNAME,
+            database=DATABASE,
+            user=USERNAME,
+            password=PASSWORD,
+            port=5432,
         )
         self._cursor = self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 

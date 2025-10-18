@@ -2,19 +2,9 @@ services:
   app:
     build: .
     restart: always
-    networks:
-      - traefik
-      - default
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.fredagscafeen.rule=Host(`fredagscafeen.dk`)
-      - traefik.http.services.fredagscafeen.loadbalancer.server.port=9000
+    network_mode: "host"
     volumes:
       - ./error:/app/error
       - ./errorarchive:/app/errorarchive
       - ./datmail/config.py:/app/datmail/config.py
       - ./datmail.log:/app/datmail.log
-
-networks:
-  traefik:
-    external: true
