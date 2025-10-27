@@ -212,8 +212,6 @@ class DatForwarder(SMTPForwarder):
             return "wrong number of From-headers (%s)" % n_from
         if not envelope.from_domain:
             return "invalid From-header"
-        if envelope.from_domain.lower() != envelope.mailfrom.split("@")[-1].lower():
-            return f"From-domain {envelope.from_domain.lower()} does not match MAIL FROM domain {envelope.mailfrom.split('@')[-1].lower()}"
         if not self.REWRITE_FROM:
             dkim_sigs = envelope.message.get_all_headers("DKIM-Signature")
             # if envelope.strict_dmarc_policy and not dkim_sigs:
