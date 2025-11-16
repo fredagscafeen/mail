@@ -62,7 +62,7 @@ def parse_recipient(recipient, db):
     invalid_recipients = []
     for sign, name in re.findall(r"([+-]?)([^+-]+)", recipient):
         try:
-            personIds, source = parse_alias(name, db)
+            personIds, source, listId, isOnlyInternal = parse_alias(name, db)
             personIdOps.append((sign or "+", personIds, source))
         except InvalidRecipient as e:
             invalid_recipients.append(e.args[0])
