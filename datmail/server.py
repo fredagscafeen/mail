@@ -226,7 +226,10 @@ class DatForwarder(SMTPForwarder):
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)
-        envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
+
+        # TODO: Fix strict dmarc policy and enable this
+        # envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
+
         reject_reason = self.reject(envelope)
         if reject_reason:
             summary = "Rejected by DatForwarder.reject (%s)" % reject_reason
