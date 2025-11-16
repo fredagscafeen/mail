@@ -238,7 +238,9 @@ class DatForwarder(SMTPForwarder):
         for rcptto in envelope.rcpttos:
             if "@fredagscafeen.dk" in rcptto.lower():
                 list_name = rcptto.split("@")[0]
-                if not self.is_sender_authorized_for_list(envelope.mailfrom, list_name):
+                # If the envelope.mailfrom was rewritten by SRS, recover the original
+                sender_email = self.extract_original_sender(envelope.mailfrom)
+                if not self.is_sender_authorized_for_list(sender_email, list_name):
                     summary = "Rejected: sender not authorized for internal-only list"
                     logger.info("%s: %s -> %s", summary, envelope.mailfrom, rcptto)
                     self.store_failed_envelope(envelope, summary, summary)
@@ -294,6 +296,37 @@ class DatForwarder(SMTPForwarder):
         )
         if from_domain_mo:
             return from_domain_mo.group(1)
+
+    def extract_original_sender(self, mailfrom):
+        """
+        Decode SRS-rewritten senders like:
+            SRS0=HASH=TTL=orig-domain=orig-local@forwarder
+        into orig-local@orig-domain; if not an SRS form, return the input.
+        Surrounding angle brackets are tolerated.
+        """
+        try:
+            if not isinstance(mailfrom, str):
+                return mailfrom
+            # Strip surrounding angle brackets if present
+            m = mailfrom.strip()
+            if m.startswith("<") and m.endswith(">"):
+                m = m[1:-1].strip()
+            # Split local part and domain
+            if "@" not in m:
+                return mailfrom
+            local, domain = m.rsplit("@", 1)
+            # If local part looks like SRS, try to recover original
+            if local.upper().startswith("SRS"):
+                parts = local.split("=")
+                # Expect at least: SRS*, HASH, TTL, orig-domain, orig-local
+                if len(parts) >= 3:
+                    orig_local = parts[-1]
+                    orig_domain = parts[-2]
+                    return "%s@%s" % (orig_local, orig_domain)
+        except Exception:
+            # On any failure, fall back to the original string
+            pass
+        return mailfrom
 
     def strict_dmarc_policy(self, envelope):
         if envelope.from_domain:
