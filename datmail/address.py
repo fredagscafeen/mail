@@ -90,14 +90,14 @@ def parse_recipient(recipient, db):
 
 def parse_alias_group(alias, db):
     mailinglists = db.get_mailinglists()
-    for id, name in mailinglists:
+    for id, name, is_only_internal in mailinglists:
         if name == alias:
 
             def f():
                 return db.get_mailinglist_members(id)
 
-            return f, GroupAlias(alias)
-    return None, None
+            return f, GroupAlias(alias), id, is_only_internal
+    return None, None, None, None
 
 
 def parse_alias(alias, db):
@@ -112,7 +112,7 @@ def parse_alias(alias, db):
     ]
 
     for f in matchers:
-        match, canonical = f(alias, db)
+        match, canonical, list_id, is_only_internal = f(alias, db)
         if match is not None:
             break
     else:
@@ -123,4 +123,4 @@ def parse_alias(alias, db):
     if not person_ids:
         # No users in the database fit the matched alias
         raise InvalidRecipient(alias)
-    return person_ids, canonical
+    return person_ids, canonical, list_id, is_only_internal

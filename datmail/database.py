@@ -54,7 +54,7 @@ class Database(object):
     def get_mailinglists(self):
         return self._fetchall(
             """
-            SELECT "id", "name" FROM "mail_mailinglist"
+            SELECT "id", "name", "isOnlyInternal" FROM "mail_mailinglist"
             """
         )
 
@@ -67,3 +67,14 @@ class Database(object):
             id,
             column=0,
         )
+
+    def is_member_of_mailinglist(self, user_id, mailinglist_id):
+        result = self._fetchall(
+            """
+            SELECT 1 FROM "mail_mailinglist_members"
+            WHERE "mailinglist_id" = %s AND "bartender_id" = %s
+            """,
+            mailinglist_id,
+            user_id,
+        )
+        return len(result) > 0

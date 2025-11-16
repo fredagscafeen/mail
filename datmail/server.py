@@ -226,13 +226,24 @@ class DatForwarder(SMTPForwarder):
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)
-        # envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
+        envelope.strict_dmarc_policy = self.strict_dmarc_policy(envelope)
         reject_reason = self.reject(envelope)
         if reject_reason:
             summary = "Rejected by DatForwarder.reject (%s)" % reject_reason
             logger.info("%s", summary)
             self.store_failed_envelope(envelope, summary, summary)
             return
+
+        # Check authorization for internal-only lists
+        for rcptto in envelope.rcpttos:
+            if "@fredagscafeen.dk" in rcptto.lower():
+                list_name = rcptto.split("@")[0]
+                if not self.is_sender_authorized_for_list(envelope.mailfrom, list_name):
+                    summary = "Rejected: sender not authorized for internal-only list"
+                    logger.info("%s: %s -> %s", summary, envelope.mailfrom, rcptto)
+                    self.store_failed_envelope(envelope, summary, summary)
+                    return
+
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
         return super(DatForwarder, self).handle_envelope(envelope, peer)
@@ -304,6 +315,25 @@ class DatForwarder(SMTPForwarder):
 
     def get_group_recipients(self, group):
         return group.recipients
+
+    def is_sender_authorized_for_list(self, sender_email, list_name):
+        """Check if sender is authorized to send to an internal-only list."""
+        try:
+            db = datmail.database.Database()
+            mailinglists = db.get_mailinglists()
+            for list_id, name, is_only_internal in mailinglists:
+                if name == list_name and is_only_internal:
+                    # List is internal-only, check if sender is a member
+                    member_ids = db.get_mailinglist_members(list_id)
+                    # Get sender's user ID from email address
+                    sender_addresses = db.get_email_addresses(member_ids)
+                    return sender_email.lower() in [
+                        addr.lower() for addr in sender_addresses
+                    ]
+            return True  # Not an internal-only list
+        except Exception:
+            logger.exception("Error checking sender authorization")
+            return True  # Allow on error
 
     def get_envelope_mailfrom(self, envelope, recipients=None):
         if self.MAIL_FROM is not None:
