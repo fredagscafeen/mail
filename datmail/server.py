@@ -245,7 +245,13 @@ class DatForwarder(SMTPForwarder):
                 sender_email = self.extract_original_sender(envelope.mailfrom)
                 if not self.is_sender_authorized_for_list(sender_email, list_name):
                     summary = "Rejected: sender not authorized for internal-only list"
-                    logger.info("%s: %s -> %s", summary, envelope.mailfrom, rcptto)
+                    logger.info(
+                        "%s: %s (%s) -> %s",
+                        summary,
+                        sender_email,
+                        envelope.mailfrom,
+                        rcptto,
+                    )
                     self.store_failed_envelope(envelope, summary, summary)
                     return
 
