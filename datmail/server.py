@@ -361,6 +361,10 @@ class DatForwarder(SMTPForwarder):
     def is_sender_authorized_for_list(self, sender_email, list_name):
         """Check if sender is authorized to send to an internal-only list."""
         try:
+            # Override internal-only if internal mail sender
+            if "@fredagscafeen.dk" in sender_email:
+                return True
+
             db = datmail.database.Database()
             mailinglists = db.get_mailinglists()
             for list_id, name, is_only_internal in mailinglists:
