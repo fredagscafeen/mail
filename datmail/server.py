@@ -237,8 +237,36 @@ class DatForwarder(SMTPForwarder):
             self.store_failed_envelope(envelope, summary, summary)
             return
 
-        # Check authorization for internal-only lists
         for rcptto in envelope.rcpttos:
+            # TODO: Filter spam emails with different Sender and From
+
+            # Check if List-Id header exists and doesn't match the recipient
+            try:
+                list_id_header = envelope.message.get_header("List-Id", "")
+                if list_id_header:
+                    # Extract the list name from List-Id (e.g., "best.fredagscafeen.dk" -> "best")
+                    list_id_match = re.match(
+                        r"^([^.@]+)\.fredagscafeen\.dk$", list_id_header.strip()
+                    )
+                    if list_id_match:
+                        list_id_name = list_id_match.group(1).lower()
+                        rcptto_name = rcptto.split("@")[0]
+
+                        # If List-Id doesn't match the recipient, it's likely spam
+                        if list_id_name != rcptto_name:
+                            summary = "Rejected: List-Id mismatch (spam detection)"
+                            logger.info(
+                                "%s: List-Id=%s, To=%s",
+                                summary,
+                                list_id_header,
+                                rcptto,
+                            )
+                            self.store_failed_envelope(envelope, summary, summary)
+                            return
+            except Exception:
+                logger.exception("Error checking List-Id header")
+
+            # Check authorization for internal-only lists
             if "@fredagscafeen.dk" in rcptto.lower():
                 list_name = rcptto.split("@")[0]
                 # If the envelope.mailfrom was rewritten by SRS, recover the original
