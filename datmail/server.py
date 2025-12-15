@@ -33,6 +33,10 @@ class DatForwarder(SMTPForwarder):
     # MAIL_FROM = 'admin@fredagscafeen.dk'
     MAIL_FROM = None
 
+    # SRS configuration: set to your forwarder domain and a stable secret
+    SRS_DOMAIN = "fredagscafeen.dk"  # use the domain that owns the forwarder
+    SRS_SECRET = os.environ.get("DATMAIL_SRS_SECRET")
+
     ERROR_TEMPLATE = """
     This is the mail system of Fredagscaféen.
 
@@ -71,8 +75,8 @@ class DatForwarder(SMTPForwarder):
         super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
-        # Send everything to mailhole
-        return True
+        # Forward messages (do not sink to mailhole)
+        return False
 
     def startup_log(self):
         logger.info(
@@ -399,9 +403,48 @@ class DatForwarder(SMTPForwarder):
             return True  # Allow on error
 
     def get_envelope_mailfrom(self, envelope, recipients=None):
+        # Prefer configured MAIL_FROM if set
         if self.MAIL_FROM is not None:
             return self.MAIL_FROM
+
+        # Apply SRS when forwarding to external recipients to preserve SPF
+        try:
+            rcpts = recipients or envelope.rcpttos or []
+            # If any recipient domain is not local, SRS-encode the MAIL FROM
+            external = any(
+                ("@" in r) and (r.lower().split("@", 1)[1] != self.SRS_DOMAIN.lower())
+                for r in rcpts
+            )
+            if external and isinstance(envelope.mailfrom, str):
+                return self.srs_encode(envelope.mailfrom)
+        except Exception:
+            logger.exception("SRS encoding failed; falling back to original MAIL FROM")
         return envelope.mailfrom
+
+    def srs_encode(self, mailfrom):
+        """
+        Minimal SRS0 encoding:
+        SRS0=HASH=orig-domain=orig-local@SRS_DOMAIN
+        HASH is a short HMAC over [orig-local, orig-domain].
+        """
+        try:
+            m = mailfrom.strip()
+            if m.startswith("<") and m.endswith(">"):
+                m = m[1:-1].strip()
+            if "@" not in m:
+                return mailfrom
+            orig_local, orig_domain = m.rsplit("@", 1)
+            import hmac, hashlib
+
+            key = self.SRS_SECRET.encode("utf-8")
+            data = ("%s@%s" % (orig_local, orig_domain)).encode("utf-8")
+            digest = hmac.new(key, data, hashlib.sha256).hexdigest()
+            # Truncate to keep it short
+            h = digest[:10]
+            return "SRS0=%s=%s=%s@%s" % (h, orig_domain, orig_local, self.SRS_DOMAIN)
+        except Exception:
+            logger.exception("srs_encode error")
+            return mailfrom
 
     def get_extra_headers(self, envelope, group):
         sender = self.get_envelope_mailfrom(envelope)
@@ -435,6 +478,8 @@ class DatForwarder(SMTPForwarder):
             charset = email.charset.Charset("utf-8")
             charset.header_encoding = charset.body_encoding = email.charset.QP
             message.message.set_payload(t, charset=charset)
+        # Use SRS-encoded MAIL FROM when delivering externally
+        sender = self.get_envelope_mailfrom(original_envelope, recipients=recipients)
         super().forward(original_envelope, message, recipients, sender)
 
     def log_invalid_recipient(self, envelope, exn):
