@@ -2,6 +2,8 @@ ADMINS = [
     ("Anders Bruun Severinsen", "anders@bruunseverinsen.dk"),
 ]
 
+CC_MAILLISTS = True
+
 DATABASE = "PATH TO DATABASE/db.sqlite3"
 
 # run 'openssl rand -hex 32'

@@ -35,6 +35,8 @@ class DatForwarder(SMTPForwarder):
 
     DOMAIN = "fredagscafeen.dk"
 
+    CC_MAILLISTS = os.environ.get("CC_MAILLISTS")
+
     SRS_SECRET = os.environ.get("DATMAIL_SRS_SECRET")
 
     ERROR_TEMPLATE = """
@@ -276,19 +278,20 @@ class DatForwarder(SMTPForwarder):
                     self.store_failed_envelope(envelope, summary, summary)
                     return
 
-        # Ensure CC for best@DOMAIN
-        try:
-            if any(r.lower() == f"best@{self.DOMAIN}" for r in envelope.rcpttos):
-                self._ensure_list_cc(envelope.message, "best")
-        except Exception:
-            logger.exception(f"Failed to add CC for best@{self.DOMAIN}")
+        if self.CC_MAILLISTS:
+            # Ensure CC for best@{self.DOMAIN}
+            try:
+                if any(r.lower() == f"best@{self.DOMAIN}" for r in envelope.rcpttos):
+                    self._ensure_list_cc(envelope.message, "best")
+            except Exception:
+                logger.exception(f"Failed to add CC for best@{self.DOMAIN}")
 
-        # Ensure CC for alle@DOMAIN
-        try:
-            if any(r.lower() == f"alle@{self.DOMAIN}" for r in envelope.rcpttos):
-                self._ensure_list_cc(envelope.message, "alle")
-        except Exception:
-            logger.exception(f"Failed to add CC for alle@{self.DOMAIN}")
+            # Ensure CC for alle@{self.DOMAIN}
+            try:
+                if any(r.lower() == f"alle@{self.DOMAIN}" for r in envelope.rcpttos):
+                    self._ensure_list_cc(envelope.message, "alle")
+            except Exception:
+                logger.exception(f"Failed to add CC for alle@{self.DOMAIN}")
 
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
