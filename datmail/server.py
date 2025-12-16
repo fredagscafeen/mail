@@ -33,8 +33,8 @@ class DatForwarder(SMTPForwarder):
     # MAIL_FROM = 'admin@fredagscafeen.dk'
     MAIL_FROM = None
 
-    # SRS configuration: set to your forwarder domain and a stable secret
-    SRS_DOMAIN = "fredagscafeen.dk"  # use the domain that owns the forwarder
+    DOMAIN = "fredagscafeen.dk"
+
     SRS_SECRET = os.environ.get("DATMAIL_SRS_SECRET")
 
     ERROR_TEMPLATE = """
@@ -155,7 +155,7 @@ class DatForwarder(SMTPForwarder):
         if envelope.mailfrom != "<>":
             return
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
-        if rcpttos != ("admin@fredagscafeen.dk",):
+        if rcpttos != (f"admin@{self.DOMAIN}",):
             return
         report = parse_delivery_report(envelope.message.message)
         if not report:
@@ -181,7 +181,7 @@ class DatForwarder(SMTPForwarder):
             return "Content-Type looks like a DSN"
 
         rcpttos = tuple(r.lower() for r in envelope.rcpttos)
-        to_admin = rcpttos == ("admin@fredagscafeen.dk",)
+        to_admin = rcpttos == (f"admin@{self.DOMAIN}",)
         subject = envelope.message.subject
         subject_str = str(subject)
         delivery_status_subject = (
@@ -242,7 +242,7 @@ class DatForwarder(SMTPForwarder):
             return
 
         for rcptto in envelope.rcpttos:
-            if "@fredagscafeen.dk" in rcptto.lower():
+            if f"@{self.DOMAIN}" in rcptto.lower():
                 # Poor man's spam filter
                 from_domain = envelope.from_domain
                 if from_domain:
@@ -276,9 +276,45 @@ class DatForwarder(SMTPForwarder):
                     self.store_failed_envelope(envelope, summary, summary)
                     return
 
+        # Ensure CC for best@DOMAIN
+        try:
+            if any(r.lower() == f"best@{self.DOMAIN}" for r in envelope.rcpttos):
+                self._ensure_list_cc(envelope.message, "best")
+        except Exception:
+            logger.exception(f"Failed to add CC for best@{self.DOMAIN}")
+
+        # Ensure CC for alle@DOMAIN
+        try:
+            if any(r.lower() == f"alle@{self.DOMAIN}" for r in envelope.rcpttos):
+                self._ensure_list_cc(envelope.message, "alle")
+        except Exception:
+            logger.exception(f"Failed to add CC for alle@{self.DOMAIN}")
+
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
         return super(DatForwarder, self).handle_envelope(envelope, peer)
+
+    def _ensure_list_cc(self, message, list_name):
+        """
+        Ensure 'datcafe-{list_name}.cs@maillist.au.dk' is included in the Cc header.
+        Append to existing Cc if present; otherwise add a new Cc header.
+        """
+        target = f"datcafe-{list_name}.cs@maillist.au.dk"
+        try:
+            existing_cc = message.get_header("Cc")
+        except KeyError:
+            existing_cc = None
+
+        if existing_cc:
+            addrs = [
+                addr.lower() for _, addr in email.utils.getaddresses([existing_cc])
+            ]
+            if target.lower() in addrs:
+                return  # Already present
+            new_cc = existing_cc + ", " + target
+            message.set_unique_header("Cc", new_cc)
+        else:
+            message.add_header("Cc", target)
 
     def fix_headers(self, message):
         # Fix References: header that has been broken by Postfix.
@@ -383,7 +419,7 @@ class DatForwarder(SMTPForwarder):
         """Check if sender is authorized to send to an internal-only list."""
         try:
             # Override internal-only if internal mail sender
-            if "@fredagscafeen.dk" in sender_email:
+            if f"@{self.DOMAIN}" in sender_email:
                 return True
 
             db = datmail.database.Database()
@@ -412,7 +448,7 @@ class DatForwarder(SMTPForwarder):
             rcpts = recipients or envelope.rcpttos or []
             # If any recipient domain is not local, SRS-encode the MAIL FROM
             external = any(
-                ("@" in r) and (r.lower().split("@", 1)[1] != self.SRS_DOMAIN.lower())
+                ("@" in r) and (r.lower().split("@", 1)[1] != self.DOMAIN.lower())
                 for r in rcpts
             )
             if external and isinstance(envelope.mailfrom, str):
@@ -424,7 +460,7 @@ class DatForwarder(SMTPForwarder):
     def srs_encode(self, mailfrom):
         """
         Minimal SRS0 encoding:
-        SRS0=HASH=orig-domain=orig-local@SRS_DOMAIN
+        SRS0=HASH=orig-domain=orig-local@DOMAIN
         HASH is a short HMAC over [orig-local, orig-domain].
         """
         try:
@@ -441,7 +477,7 @@ class DatForwarder(SMTPForwarder):
             digest = hmac.new(key, data, hashlib.sha256).hexdigest()
             # Truncate to keep it short
             h = digest[:10]
-            return "SRS0=%s=%s=%s@%s" % (h, orig_domain, orig_local, self.SRS_DOMAIN)
+            return "SRS0=%s=%s=%s@%s" % (h, orig_domain, orig_local, self.DOMAIN)
         except Exception:
             logger.exception("srs_encode error")
             return mailfrom
@@ -463,7 +499,7 @@ class DatForwarder(SMTPForwarder):
         orig_to = group.origin.name.lower()
         parsed = email.utils.getaddresses([orig_from])
         name = parsed[0][0]
-        addr = "%s@fredagscafeen.dk" % orig_to.upper()
+        addr = "%s@%s" % (orig_to.upper(), self.DOMAIN)
         return email.utils.formataddr(("%s via %s" % (name, orig_to), addr))
 
     def forward(self, original_envelope, message, recipients, sender):
@@ -513,7 +549,7 @@ class DatForwarder(SMTPForwarder):
         # admin_emails = datmail.address.get_admin_emails()
         admin_emails = ["anders@bruunseverinsen.dk"]
 
-        sender = recipient = "admin@fredagscafeen.dk"
+        sender = recipient = f"admin@{self.DOMAIN}"
 
         if envelope:
             subject = "[datmail] Unhandled exception in processing"
