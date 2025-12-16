@@ -2,7 +2,7 @@ ADMINS = [
     ("Anders Bruun Severinsen", "anders@bruunseverinsen.dk"),
 ]
 
-CC_MAILLISTS = True
+CC_MAILLISTS = False
 
 DATABASE = "PATH TO DATABASE/db.sqlite3"
 

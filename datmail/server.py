@@ -17,6 +17,7 @@ import datmail.headers
 from datmail.address import GroupAlias  # PeriodAlias, DirectAlias,
 from datmail.delivery_reports import parse_delivery_report
 from datmail.dmarc import has_strict_dmarc_policy
+from datmail.config import SRS_SECRET, CC_MAILLISTS
 
 RecipientGroup = namedtuple("RecipientGroup", "origin recipients".split())
 
@@ -34,10 +35,6 @@ class DatForwarder(SMTPForwarder):
     MAIL_FROM = None
 
     DOMAIN = "fredagscafeen.dk"
-
-    CC_MAILLISTS = os.environ.get("CC_MAILLISTS")
-
-    SRS_SECRET = os.environ.get("DATMAIL_SRS_SECRET")
 
     ERROR_TEMPLATE = """
     This is the mail system of Fredagscaféen.
@@ -278,7 +275,7 @@ class DatForwarder(SMTPForwarder):
                     self.store_failed_envelope(envelope, summary, summary)
                     return
 
-        if self.CC_MAILLISTS:
+        if CC_MAILLISTS:
             # Ensure CC for best@{self.DOMAIN}
             try:
                 if any(r.lower() == f"best@{self.DOMAIN}" for r in envelope.rcpttos):
@@ -475,7 +472,7 @@ class DatForwarder(SMTPForwarder):
             orig_local, orig_domain = m.rsplit("@", 1)
             import hmac, hashlib
 
-            key = self.SRS_SECRET.encode("utf-8")
+            key = SRS_SECRET.encode("utf-8")
             data = ("%s@%s" % (orig_local, orig_domain)).encode("utf-8")
             digest = hmac.new(key, data, hashlib.sha256).hexdigest()
             # Truncate to keep it short
