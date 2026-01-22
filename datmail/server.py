@@ -255,7 +255,7 @@ class DatForwarder(SMTPForwarder):
                     ]
                     if not any(
                         from_domain.endswith(tld) for tld in allowed_tlds
-                    ) and any(from_domain.endswith(tld) for tld in notallowed_tlds):
+                    ) or any(from_domain.endswith(tld) for tld in notallowed_tlds):
                         summary = "Rejected: spam filter triggered"
                         logger.info(
                             "%s: %s (%s) -> %s",
