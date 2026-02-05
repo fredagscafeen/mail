@@ -243,7 +243,7 @@ class DatForwarder(SMTPForwarder):
         for rcptto in envelope.rcpttos:
             if f"@{self.DOMAIN}" in rcptto.lower():
                 # Poor man's spam filter
-                from_domain = envelope.from_domain
+                from_domain = envelope.from_domain.lower()
                 if from_domain:
                     allowed_tlds = [
                         ".com",
