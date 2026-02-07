@@ -251,7 +251,8 @@ class DatForwarder(SMTPForwarder):
                         "certa.in",  # Uber uses certa.in for onboarding suppliers
                     ]
                     notallowed_tlds = [
-                        "eubusinessnews.com",  # Keeps sending spam nominations
+                        "eubusinessnews.com",  # Spam nominations
+                        "limib.com",  # Fake debt collection
                     ]
                     if not any(
                         from_domain.endswith(tld) for tld in allowed_tlds
