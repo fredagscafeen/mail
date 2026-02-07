@@ -367,6 +367,7 @@ class DatForwarder(SMTPForwarder):
 
     def get_from_domain(self, envelope):
         from_header = envelope.message.get_header("From", "") or ""
+        from_header = str(from_header) if from_header else ""
         from_domain_mo = re.search(r"@([^ \t\n>]+)", from_header)
         if from_domain_mo:
             return from_domain_mo.group(1)
