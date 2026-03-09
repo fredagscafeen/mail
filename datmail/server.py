@@ -249,6 +249,7 @@ class DatForwarder(SMTPForwarder):
                         ".com",
                         ".dk",
                         "certa.in",  # Uber uses certa.in for onboarding suppliers
+                        "auhack.org",
                     ]
                     notallowed_tlds = [
                         "eubusinessnews.com",  # Spam nominations
