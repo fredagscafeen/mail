@@ -28,13 +28,15 @@ def now_string():
 
 
 class DatForwarder(SMTPForwarder):
-    REWRITE_FROM = False
+    REWRITE_FROM = True
     STRIP_HTML = False
 
-    # MAIL_FROM = 'admin@fredagscafeen.dk'
-    MAIL_FROM = None
+    MAIL_FROM = 'mail@fredagscafeen.dk' # IT rewrites all emails to come from this to allow SES relay
+    # MIKKEL: SES only allows relaying from known senders thus we have to use @fredagscafeen.dk
+    # MAIL_FROM = None
 
     DOMAIN = "fredagscafeen.dk"
+    DSN_RECIPIENT = "web@fredagscafeen.dk"
 
     ERROR_TEMPLATE = """
     This is the mail system of Fredagscaféen.
@@ -168,6 +170,25 @@ class DatForwarder(SMTPForwarder):
         logger.info("%s", summary)
         return True
 
+    def get_dsn_redirect_recipient(self, envelope):
+        try:
+            content_type = envelope.message.get_unique_header("Content-Type")
+        except KeyError:
+            content_type = ""
+
+        ctype_report = content_type.startswith("multipart/report")
+        ctype_delivery = "report-type=delivery-status" in content_type
+        if ctype_report and ctype_delivery:
+            return self.DSN_RECIPIENT
+
+        subject_str = str(envelope.message.subject)
+        delivery_status_subject = (
+            "Delayed Mail" in subject_str
+            or "Undelivered Mail Returned to Sender" in subject_str
+        )
+        if envelope.mailfrom == "<>" and delivery_status_subject:
+            return self.DSN_RECIPIENT
+
     def reject(self, envelope):
         # Reject delivery status notifications not sent to admin@
         try:
@@ -226,6 +247,14 @@ class DatForwarder(SMTPForwarder):
     def handle_envelope(self, envelope, peer):
         # Get year only once per envelope
         self.year = datetime.datetime.now().year
+        dsn_recipient = self.get_dsn_redirect_recipient(envelope)
+        if dsn_recipient:
+            if tuple(r.lower() for r in envelope.rcpttos) != (dsn_recipient.lower(),):
+                logger.info("Redirecting DSN to <%s>", dsn_recipient)
+                envelope.rcpttos = [dsn_recipient]
+            if not self.REWRITE_FROM and not self.STRIP_HTML:
+                self.fix_headers(envelope.message)
+            return super(DatForwarder, self).handle_envelope(envelope, peer)
         if self.handle_delivery_report(envelope):
             return
         envelope.from_domain = self.get_from_domain(envelope)
@@ -503,7 +532,8 @@ class DatForwarder(SMTPForwarder):
         if self.REWRITE_FROM:
             orig_from = envelope.message.get_header("From")
             headers.append(("From", self.get_from_header(envelope, group)))
-            headers.append(("Reply-To", orig_from))
+            if orig_from:
+                headers.append(("Reply-To", orig_from))
         return headers
 
     def get_from_header(self, envelope, group):
@@ -511,7 +541,7 @@ class DatForwarder(SMTPForwarder):
         orig_to = group.origin.name.lower()
         parsed = email.utils.getaddresses([orig_from])
         name = parsed[0][0]
-        addr = "%s@%s" % (orig_to.upper(), self.DOMAIN)
+        addr = self.MAIL_FROM or "mail@%s" % self.DOMAIN
         return email.utils.formataddr(("%s via %s" % (name, orig_to), addr))
 
     def forward(self, original_envelope, message, recipients, sender):
