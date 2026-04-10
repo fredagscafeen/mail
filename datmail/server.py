@@ -280,6 +280,7 @@ class DatForwarder(SMTPForwarder):
                         "certa.in",  # Uber uses certa.in for onboarding suppliers
                         "auhack.org",
                         ".aws",
+                        "frydensbjerg.net",
                     ]
                     notallowed_tlds = [
                         "heyundichan.com",
