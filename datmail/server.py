@@ -282,6 +282,7 @@ class DatForwarder(SMTPForwarder):
                         ".aws",
                     ]
                     notallowed_tlds = [
+                        "heyundichan.com",
                         "eubusinessnews.com",  # Spam nominations
                         "limib.com",  # Fake debt collection
                         "graytongue.com",  # Fake business funding
