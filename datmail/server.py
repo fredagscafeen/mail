@@ -100,7 +100,10 @@ class DatForwarder(SMTPForwarder):
 
         envelope_id = self.generate_uuid()
 
-        message.add_header("X-Fredagscafeen-Envelope-ID", envelope_id)
+        try:
+            message.add_header("X-Fredagscafeen-Envelope-ID", envelope_id)
+        except Exception:
+            logger.exception("Could not add X-Fredagscafeen-Envelope-ID header")
 
         logger.info("Handling new envelope with id: %s", envelope_id)
 
@@ -137,7 +140,7 @@ class DatForwarder(SMTPForwarder):
                 recipients = repr(rcpttos)
             recipients = "To: " + recipients
 
-        logger.info("%s", recipients)
+        logger.info("Initial recipients: %s", recipients)
 
     def log_delivery(self, message, recipients, sender):
         if all("@" in rcpt for rcpt in recipients):
@@ -163,7 +166,7 @@ class DatForwarder(SMTPForwarder):
 
         self.delivered += 1
 
-        logger.info("To: %s", recipients_string)
+        logger.info("Delivering to resolved recipients: %s", recipients_string)
 
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != "<>":
@@ -180,7 +183,7 @@ class DatForwarder(SMTPForwarder):
         )
         description = summary = report.notification
         self.store_failed_envelope(envelope, description, summary, inner_envelope)
-        logger.info("%s", summary)
+        logger.info("Failed to forward mail: %s", summary)
         return True
 
     def get_dsn_redirect_recipient(self, envelope):
@@ -458,7 +461,7 @@ class DatForwarder(SMTPForwarder):
         name, domain = rcptto.split("@")
         recipients, origin = datmail.address.translate_recipient(name, list_ids=True)
         if not recipients:
-            logger.info("%s resolved to the empty list", name)
+            logger.info("Invalid recipient: %s resolved to an empty list", name)
             raise InvalidRecipient(rcptto)
         recipients.sort(key=lambda r: origin[r])
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
