@@ -10,6 +10,7 @@
 4. build and run with docker-compose: `docker-compose up --build`
 
 The mailserver will be available on port 9000.
+The resend control endpoint listens on port 9001 inside the container by default.
 
 To run in the background: `docker-compose up -d --build`
 To view logs: `docker-compose logs -f mailserver`
@@ -30,6 +31,15 @@ After that, you are ready to follow the steps below:
 4. install `pip-tools`: `pip install pip-tools`
 5. install dependencies: `pip-sync requirements.txt dev-requirements.txt`
 6. install pre-commit hook: `pre-commit install`
+
+#### Monitoring and resend configuration
+
+`datmail/config.py` should also define:
+
+* `DJANGO_MONITORING_API_URL` and `DJANGO_MONITORING_API_TOKEN` so datmail can upsert processed and dropped mail into Django.
+* `DATMAIL_CONTROL_HOST`, `DATMAIL_CONTROL_PORT`, and `DATMAIL_CONTROL_TOKEN` so Django admin resend actions can call datmail's authenticated `/control/resend` endpoint.
+
+The resend endpoint expects Django to send the archived message `request_uuid`, the resend `target`, the original envelope `sender`, and the original incoming target address so datmail can replay the archived `.eml` with the usual forwarding headers.
 
 ### Introduction
 

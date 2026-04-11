@@ -49,6 +49,12 @@ def load_server_module():
         def __init__(self, message):
             self.message = message
 
+        def add_header(self, name, value):
+            self.message[name] = value
+
+        def set_unique_header(self, name, value):
+            self.message[name] = value
+
     emailtunnel.SMTPForwarder = SMTPForwarder
     emailtunnel.InvalidRecipient = InvalidRecipient
     emailtunnel.Envelope = Envelope
@@ -105,6 +111,9 @@ def load_server_module():
 
         def upload_object(self, body, object_name):
             return None
+
+        def get_object(self, object_name):
+            return b""
 
     storage.Storage = Storage
     sys.modules["datmail.storage"] = storage
@@ -250,7 +259,7 @@ class ServerMonitoringTests(unittest.TestCase):
                 "received_at": "2026-04-11T15:00:00Z",
                 "sender": "sender@example.com",
                 "target": "best@fredagscafeen.dk",
-                "mailing_list": None,
+                "mailing_list": "best",
                 "status": "DROPPED",
                 "reason": "spam filter triggered",
                 "s3_object_key": "archive/request-123.eml",
@@ -331,6 +340,30 @@ class ServerMonitoringTests(unittest.TestCase):
             {"alice@example.com"},
             "best",
         )
+
+    def test_resend_archived_mail_forwards_single_target_with_list_headers(self):
+        self.forwarder.storage.get_object.return_value = b"Subject: Test\n\nBody"
+        self.forwarder.forward = Mock()
+        self.forwarder.get_extra_headers = Mock(
+            return_value=[("X-Resent-For", "best@fredagscafeen.dk")]
+        )
+
+        self.forwarder.resend_archived_mail(
+            request_uuid="request-123",
+            target="alice@example.com",
+            sender="sender@example.com",
+            original_target="best@fredagscafeen.dk",
+        )
+
+        self.forwarder.storage.get_object.assert_called_once_with(
+            "archive/request-123.eml"
+        )
+        envelope, message, recipients, sender = self.forwarder.forward.call_args[0]
+        self.assertEqual(envelope.mailfrom, "sender@example.com")
+        self.assertEqual(envelope.rcpttos, ["best@fredagscafeen.dk"])
+        self.assertEqual(message.message["X-Resent-For"], "best@fredagscafeen.dk")
+        self.assertEqual(recipients, ["alice@example.com"])
+        self.assertEqual(sender, "sender@example.com")
 
 
 if __name__ == "__main__":

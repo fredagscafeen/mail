@@ -1,6 +1,7 @@
 import datetime
 from email.generator import BytesGenerator
 import email.header
+import email.parser
 import email.utils
 import io
 import itertools
@@ -720,7 +721,7 @@ class DatForwarder(SMTPForwarder):
             "received_at": self.get_received_at(envelope),
             "sender": self.extract_original_sender(envelope.mailfrom),
             "target": self.get_report_target(envelope),
-            "mailing_list": None,
+            "mailing_list": self.get_report_mailing_list(envelope),
             "status": "DROPPED",
             "reason": reason,
             "s3_object_key": self.get_archive_object_name(envelope),
@@ -730,6 +731,16 @@ class DatForwarder(SMTPForwarder):
             self.monitoring_client.upsert_incoming_mail(payload)
         except Exception:
             logger.exception("Could not report dropped mail to Django")
+
+    def resend_archived_mail(self, request_uuid, target, sender, original_target):
+        raw_eml = self.storage.get_object(f"archive/{request_uuid}.eml")
+        parsed_message = email.parser.BytesParser().parsebytes(raw_eml)
+        message = Message(parsed_message)
+        envelope = Envelope(message, sender, [original_target])
+        group = RecipientGroup(GroupAlias(original_target.split("@", 1)[0]), [target])
+        for field, value in self.get_extra_headers(envelope, group):
+            envelope.message.set_unique_header(field, value)
+        self.forward(envelope, envelope.message, [target], sender)
 
     def get_raw_eml(self, message):
         """Helper to get the raw bytes of an email message."""

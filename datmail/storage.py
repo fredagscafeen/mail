@@ -26,3 +26,14 @@ class Storage:
             logger.info(f"File {object_name} uploaded to {self.bucket_name} with expiration in 90 days.")
         except Exception as e:
             logger.error(f"Error uploading file: {e}")
+
+    def get_object(self, object_name):
+        try:
+            response = self.s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=object_name,
+            )
+            return response["Body"].read()
+        except Exception as e:
+            logger.error(f"Error downloading file: {e}")
+            raise
