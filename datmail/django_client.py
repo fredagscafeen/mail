@@ -13,9 +13,12 @@ class DjangoMonitoringClient:
         }
 
     def upsert_incoming_mail(self, payload):
-        return requests.post(
+        r = requests.post(
             f"{self.base_url}/monitoring/incoming-mails/",
             json=payload,
             headers=self._headers(),
             timeout=10,
         )
+        r.raise_for_status()
+        
+        return r
