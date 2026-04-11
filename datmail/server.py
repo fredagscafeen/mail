@@ -107,7 +107,7 @@ class DatForwarder(SMTPForwarder):
 
         logger.info("Handling new envelope with id: %s", envelope_id)
 
-        self.store_envelope()
+        self.store_envelope(envelope)
 
         if type(mailfrom) == str:
             sender = "<%s>" % mailfrom
