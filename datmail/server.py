@@ -21,7 +21,14 @@ from datmail.address import GroupAlias  # PeriodAlias, DirectAlias,
 from datmail.delivery_reports import parse_delivery_report
 from datmail.dmarc import has_strict_dmarc_policy
 from datmail.config import SRS_SECRET, CC_MAILLISTS
+from datmail.django_client import DjangoMonitoringClient
 from datmail.storage import Storage
+
+try:
+    from datmail.config import DJANGO_MONITORING_API_URL, DJANGO_MONITORING_API_TOKEN
+except ImportError:
+    DJANGO_MONITORING_API_URL = None
+    DJANGO_MONITORING_API_TOKEN = None
 
 RecipientGroup = namedtuple("RecipientGroup", "origin recipients".split())
 
@@ -78,6 +85,11 @@ class DatForwarder(SMTPForwarder):
         self.delivered = 0
         self.deliver_recipients = {}
         self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen")
+        self.monitoring_client = None
+        if DJANGO_MONITORING_API_URL and DJANGO_MONITORING_API_TOKEN:
+            self.monitoring_client = DjangoMonitoringClient(
+                DJANGO_MONITORING_API_URL, DJANGO_MONITORING_API_TOKEN
+            )
         super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
@@ -97,6 +109,7 @@ class DatForwarder(SMTPForwarder):
     def log_receipt(self, peer, envelope):
         mailfrom = envelope.mailfrom
         message = envelope.message
+        envelope.received_at = datetime.datetime.now(datetime.timezone.utc)
 
         envelope_id = self.generate_uuid()
 
@@ -283,6 +296,7 @@ class DatForwarder(SMTPForwarder):
             summary = "Rejected by DatForwarder.reject (%s)" % reject_reason
             logger.info("%s", summary)
             self.store_failed_envelope(envelope, summary, summary)
+            self.report_dropped_mail(envelope, summary)
             return
 
         for rcptto in envelope.rcpttos:
@@ -317,6 +331,7 @@ class DatForwarder(SMTPForwarder):
                             rcptto,
                         )
                         self.store_failed_envelope(envelope, summary, summary)
+                        self.report_dropped_mail(envelope, summary)
                         return
 
                 # Check authorization for internal-only lists
@@ -333,6 +348,7 @@ class DatForwarder(SMTPForwarder):
                         rcptto,
                     )
                     self.store_failed_envelope(envelope, summary, summary)
+                    self.report_dropped_mail(envelope, summary)
                     return
 
         if CC_MAILLISTS:
@@ -352,7 +368,14 @@ class DatForwarder(SMTPForwarder):
 
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
-        return super(DatForwarder, self).handle_envelope(envelope, peer)
+        envelope.expanded_recipients = set()
+        result = super(DatForwarder, self).handle_envelope(envelope, peer)
+        self.report_processed_mail(
+            envelope,
+            getattr(envelope, "expanded_recipients", set()),
+            self.get_report_mailing_list(envelope),
+        )
+        return result
 
     def _ensure_list_cc(self, message, list_name):
         """
@@ -576,6 +599,10 @@ class DatForwarder(SMTPForwarder):
             charset.header_encoding = charset.body_encoding = email.charset.QP
             message.message.set_payload(t, charset=charset)
         # Use SRS-encoded MAIL FROM when delivering externally
+        original_envelope.expanded_recipients = set(
+            getattr(original_envelope, "expanded_recipients", set())
+        )
+        original_envelope.expanded_recipients.update(recipients)
         sender = self.get_envelope_mailfrom(original_envelope, recipients=recipients)
         super().forward(original_envelope, message, recipients, sender)
 
@@ -640,6 +667,69 @@ class DatForwarder(SMTPForwarder):
 
     def generate_uuid(self):
         return str(uuid.uuid4())
+
+    def get_request_uuid(self, envelope):
+        return envelope.message.get_header("X-Fredagscafeen-Envelope-ID")
+
+    def get_received_at(self, envelope):
+        received_at = getattr(envelope, "received_at", None)
+        if received_at is None:
+            received_at = datetime.datetime.now(datetime.timezone.utc)
+        elif received_at.tzinfo is None:
+            received_at = received_at.replace(tzinfo=datetime.timezone.utc)
+        return received_at.isoformat().replace("+00:00", "Z")
+
+    def get_archive_object_name(self, envelope):
+        return f"archive/{self.get_request_uuid(envelope)}.eml"
+
+    def get_report_target(self, envelope):
+        if envelope.rcpttos:
+            return envelope.rcpttos[0]
+        return ""
+
+    def get_report_mailing_list(self, envelope):
+        target = self.get_report_target(envelope)
+        if f"@{self.DOMAIN}" not in target.lower():
+            return None
+        return target.split("@", 1)[0].lower()
+
+    def report_processed_mail(self, envelope, expanded_recipients, mailing_list_name):
+        if self.monitoring_client is None:
+            return
+        payload = {
+            "request_uuid": self.get_request_uuid(envelope),
+            "received_at": self.get_received_at(envelope),
+            "sender": self.extract_original_sender(envelope.mailfrom),
+            "target": self.get_report_target(envelope),
+            "mailing_list": mailing_list_name,
+            "status": "PROCESSED",
+            "reason": "",
+            "s3_object_key": self.get_archive_object_name(envelope),
+            "expanded_recipients": sorted(expanded_recipients),
+        }
+        try:
+            self.monitoring_client.upsert_incoming_mail(payload)
+        except Exception:
+            logger.exception("Could not report processed mail to Django")
+
+    def report_dropped_mail(self, envelope, reason):
+        if self.monitoring_client is None:
+            return
+        payload = {
+            "request_uuid": self.get_request_uuid(envelope),
+            "received_at": self.get_received_at(envelope),
+            "sender": self.extract_original_sender(envelope.mailfrom),
+            "target": self.get_report_target(envelope),
+            "mailing_list": None,
+            "status": "DROPPED",
+            "reason": reason,
+            "s3_object_key": self.get_archive_object_name(envelope),
+            "expanded_recipients": [],
+        }
+        try:
+            self.monitoring_client.upsert_incoming_mail(payload)
+        except Exception:
+            logger.exception("Could not report dropped mail to Django")
 
     def get_raw_eml(self, message):
         """Helper to get the raw bytes of an email message."""
