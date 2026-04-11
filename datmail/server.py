@@ -98,6 +98,14 @@ class DatForwarder(SMTPForwarder):
         mailfrom = envelope.mailfrom
         message = envelope.message
 
+        envelope_id = self.generate_uuid()
+
+        message.add_header("X-Fredagscafeen-Envelope-ID", envelope_id)
+
+        logger.info("Handling new envelope with id: %s", envelope_id)
+
+        self.store_envelope()
+
         if type(mailfrom) == str:
             sender = "<%s>" % mailfrom
         else:
@@ -250,11 +258,6 @@ class DatForwarder(SMTPForwarder):
             #    )
 
     def handle_envelope(self, envelope, peer):
-        envelope_id = self.generate_uuid()
-        logger.info("Handling new envelope with id: %s", envelope_id)
-
-        self.store_envelope(envelope_id, envelope)
-
         # Get year only once per envelope
         self.year = datetime.datetime.now().year
         dsn_recipient = self.get_dsn_redirect_recipient(envelope)
@@ -643,10 +646,11 @@ class DatForwarder(SMTPForwarder):
         gen.flatten(message.message)
         return out.getvalue()
     
-    def store_envelope(self, envelope_id, envelope):
+    def store_envelope(self):
         """Store the raw email in S3 for archival."""
         try:
-            raw_eml = self.get_raw_eml(envelope.message)
+            raw_eml = self.get_raw_eml(self.message)
+            envelope_id = self.message.get_header("X-Fredagscafeen-Envelope-ID")
             object_name = f"archive/{envelope_id}.eml"
             self.storage.upload_object(raw_eml, object_name)
         except Exception as e:

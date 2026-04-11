@@ -23,6 +23,6 @@ class Storage:
                 Expires=datetime.datetime.now() + datetime.timedelta(days=90)
             )
 
-            logger.info(f"File {object_name} uploaded to {self.bucket_name}/{object_name} with expiration in 90 days.")
+            logger.info(f"File {object_name} uploaded to {self.bucket_name} with expiration in 90 days.")
         except Exception as e:
             logger.error(f"Error uploading file: {e}")
