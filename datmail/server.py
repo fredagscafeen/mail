@@ -1,6 +1,8 @@
 import datetime
+from email.generator import BytesGenerator
 import email.header
 import email.utils
+import io
 import itertools
 import json
 import os
@@ -8,6 +10,7 @@ import re
 import sys
 import textwrap
 import traceback
+import uuid
 from collections import OrderedDict, namedtuple
 
 from emailtunnel import Envelope, InvalidRecipient, Message, SMTPForwarder, logger
@@ -18,6 +21,7 @@ from datmail.address import GroupAlias  # PeriodAlias, DirectAlias,
 from datmail.delivery_reports import parse_delivery_report
 from datmail.dmarc import has_strict_dmarc_policy
 from datmail.config import SRS_SECRET, CC_MAILLISTS
+from datmail.storage import Storage
 
 RecipientGroup = namedtuple("RecipientGroup", "origin recipients".split())
 
@@ -73,6 +77,7 @@ class DatForwarder(SMTPForwarder):
         self.exceptions = set()
         self.delivered = 0
         self.deliver_recipients = {}
+        self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen")
         super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
@@ -245,6 +250,11 @@ class DatForwarder(SMTPForwarder):
             #    )
 
     def handle_envelope(self, envelope, peer):
+        envelope_id = self.generate_uuid()
+        logger.info("Handling new envelope with id: %s", envelope_id)
+
+        self.store_envelope(envelope_id, envelope)
+
         # Get year only once per envelope
         self.year = datetime.datetime.now().year
         dsn_recipient = self.get_dsn_redirect_recipient(envelope)
@@ -620,6 +630,27 @@ class DatForwarder(SMTPForwarder):
             logger.exception("Could not add extra headers in forward_to_admin")
 
         self.deliver(admin_message, admin_emails, sender)
+
+    def generate_uuid(self):
+        return str(uuid.uuid4())
+
+    def get_raw_eml(self, message):
+        """Helper to get the raw bytes of an email message."""
+        # 'message' here is your emailtunnel.Message object
+        # 'message.message' is the underlying email.message.Message
+        out = io.BytesIO()
+        gen = BytesGenerator(out)
+        gen.flatten(message.message)
+        return out.getvalue()
+    
+    def store_envelope(self, envelope_id, envelope):
+        """Store the raw email in S3 for archival."""
+        try:
+            raw_eml = self.get_raw_eml(envelope.message)
+            object_name = f"archive/{envelope_id}.eml"
+            self.storage.upload_object(raw_eml, object_name)
+        except Exception as e:
+            logger.error(f"Error storing envelope to S3: {e}")
 
     def store_failed_envelope(
         self, envelope, description, summary, inner_envelope=None
