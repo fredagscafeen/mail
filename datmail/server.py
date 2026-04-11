@@ -303,6 +303,7 @@ class DatForwarder(SMTPForwarder):
                         "eubusinessnews.com",  # Spam nominations
                         "limib.com",  # Fake debt collection
                         "graytongue.com",  # Fake business funding
+                        "dustrystock.com",  # Fake business funding
                     ]
                     if not any(
                         from_domain.endswith(tld) for tld in allowed_tlds
