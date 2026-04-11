@@ -11,3 +11,9 @@ services:
       - ./errorarchive:/app/errorarchive
       - ./datmail/config.py:/app/datmail/config.py
       - ./datmail.log:/app/datmail.log
+    networks:
+      - web_default
+
+networks:
+  web_default:
+    external: true
