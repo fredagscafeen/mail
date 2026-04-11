@@ -85,7 +85,7 @@ class DatForwarder(SMTPForwarder):
         self.exceptions = set()
         self.delivered = 0
         self.deliver_recipients = {}
-        self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen")
+        self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen-1")
         self.monitoring_client = None
         if DJANGO_MONITORING_API_URL and DJANGO_MONITORING_API_TOKEN:
             self.monitoring_client = DjangoMonitoringClient(
