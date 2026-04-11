@@ -166,7 +166,7 @@ class DatForwarder(SMTPForwarder):
 
         self.delivered += 1
 
-        logger.info("Delivering to resolved recipients: %s", recipients_string)
+        logger.info("Forwarding to resolved recipients: %s", recipients_string)
 
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != "<>":
@@ -649,11 +649,11 @@ class DatForwarder(SMTPForwarder):
         gen.flatten(message.message)
         return out.getvalue()
     
-    def store_envelope(self):
+    def store_envelope(self, envelope):
         """Store the raw email in S3 for archival."""
         try:
-            raw_eml = self.get_raw_eml(self.message)
-            envelope_id = self.message.get_header("X-Fredagscafeen-Envelope-ID")
+            raw_eml = self.get_raw_eml(envelope.message)
+            envelope_id = envelope.message.get_header("X-Fredagscafeen-Envelope-ID")
             object_name = f"archive/{envelope_id}.eml"
             self.storage.upload_object(raw_eml, object_name)
         except Exception as e:
