@@ -17,8 +17,8 @@ class DjangoMonitoringClient:
             f"{self.base_url}/monitoring/incoming-mails/",
             json=payload,
             headers=self._headers(),
-            timeout=10,
+            timeout=5,
         )
         r.raise_for_status()
-        
+
         return r

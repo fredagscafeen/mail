@@ -369,13 +369,7 @@ class DatForwarder(SMTPForwarder):
 
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
-        envelope.expanded_recipients = set()
         result = super(DatForwarder, self).handle_envelope(envelope, peer)
-        self.report_processed_mail(
-            envelope,
-            getattr(envelope, "expanded_recipients", set()),
-            self.get_report_mailing_list(envelope),
-        )
         return result
 
     def _ensure_list_cc(self, message, list_name):
@@ -605,6 +599,11 @@ class DatForwarder(SMTPForwarder):
         )
         original_envelope.expanded_recipients.update(recipients)
         sender = self.get_envelope_mailfrom(original_envelope, recipients=recipients)
+        self.report_processed_mail(
+            original_envelope,
+            getattr(original_envelope, "expanded_recipients", set()),
+            self.get_report_mailing_list(original_envelope),
+        )
         super().forward(original_envelope, message, recipients, sender)
 
     def log_invalid_recipient(self, envelope, exn):
