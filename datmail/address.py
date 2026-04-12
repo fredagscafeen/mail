@@ -100,7 +100,7 @@ def parse_alias_group(alias, api_client):
     if not members:
         return None, None, None, None # No members, so not a valid alias
 
-    email_list = [email for email in members if isinstance(email, str)]
+    email_list = [m.get("email") for m in members if isinstance(m.get("email"), str)]
 
     return email_list, GroupAlias(alias), list_info.get("id"), list_info.get("isOnlyInternal")
 

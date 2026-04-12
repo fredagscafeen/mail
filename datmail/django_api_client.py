@@ -46,18 +46,11 @@ class DjangoAPIClient:
         if not isinstance(members, list):
             raise ValueError("Expected 'members' to be a list")
         
-        email_list = [email for email in members if isinstance(email, str)]
-        ids_list = [id for id in members if isinstance(id, int)]
+        email_list = [m.get("email") for m in members if isinstance(m.get("email"), str)]
+        ids_list = [m.get("id") for m in members if isinstance(m.get("id"), int)]
         
-        if len(email_list) != len(members):
-            raise ValueError("Some emails in 'members' were not strings")
-        if len(ids_list) != len(members):
-            raise ValueError("Some ids in 'members' were not integers")
-
         if len(email_list) == 0:
             raise ValueError("Received empty list of emails")
-        if len(ids_list) == 0:
-            raise ValueError("Received empty list of ids")
 
         return email_list, ids_list
 
@@ -82,7 +75,18 @@ class DjangoAPIClient:
         if not isinstance(result_json, list):
             raise ValueError("Expected spam filter to be a list")
 
-        allowed_domains = [tld for tld, allowed in result_json if isinstance(tld, str) and allowed]
-        blocked_domains = [tld for tld, allowed in result_json if isinstance(tld, str) and not allowed]
+        allowed_domains = []
+        blocked_domains = []
+
+        for entry in result_json:
+            if not isinstance(entry, dict):
+                raise ValueError("Expected each spam filter entry to be a dict")
+            domain = entry.get("domain")
+            if not isinstance(domain, str):
+                raise ValueError("Expected 'domain' to be a string in spam filter entry")
+            if entry.get("allowed") is False:
+                blocked_domains.append(domain)
+            else:
+                allowed_domains.append(domain)
 
         return allowed_domains, blocked_domains

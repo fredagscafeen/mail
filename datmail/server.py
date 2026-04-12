@@ -485,8 +485,8 @@ class DatForwarder(SMTPForwarder):
             
             if list_info.get("isOnlyInternal") and list_info.get("members"):
                 # List is internal-only, check if sender is a member
-                members = list_info["members"]
-                return sender_email.lower() in [email.lower() for email in members]
+                members = list_info.get("members", [])
+                return sender_email.lower() in [m.get("email", "").lower() for m in members]
             else:
                 return True  # Not an internal-only list
         except Exception:
