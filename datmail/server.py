@@ -295,24 +295,10 @@ class DatForwarder(SMTPForwarder):
                 # Poor man's spam filter
                 from_domain = envelope.from_domain.lower()
                 if from_domain:
-                    allowed_tlds = [
-                        ".com",
-                        ".dk",
-                        "certa.in",  # Uber uses certa.in for onboarding suppliers
-                        "auhack.org",
-                        ".aws",
-                        "frydensbjerg.net",
-                    ]
-                    notallowed_tlds = [
-                        "heyundichan.com",
-                        "eubusinessnews.com",  # Spam nominations
-                        "limib.com",  # Fake debt collection
-                        "graytongue.com",  # Fake business funding
-                        "dustrystock.com",  # Fake business funding
-                    ]
+                    allowed_domains, blocked_domains = self.api_client.get_spamfilter()
                     if not any(
-                        from_domain.endswith(tld) for tld in allowed_tlds
-                    ) or any(from_domain.endswith(tld) for tld in notallowed_tlds):
+                        from_domain.endswith(tld) for tld in allowed_domains
+                    ) or any(from_domain.endswith(tld) for tld in blocked_domains):
                         summary = "Rejected: spam filter triggered"
                         logger.info(
                             "%s: %s (%s) -> %s",

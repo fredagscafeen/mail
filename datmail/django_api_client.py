@@ -69,3 +69,20 @@ class DjangoAPIClient:
         )
         r.raise_for_status()
         return r.json()
+
+    def get_spamfilter(self):
+        r = requests.get(
+            f"{self.base_url}/mail/spamfilter/",
+            headers=self._headers(),
+            timeout=5
+        )
+        r.raise_for_status()
+        result_json = r.json()
+
+        if not isinstance(result_json, list):
+            raise ValueError("Expected spam filter to be a list")
+
+        allowed_domains = [tld for tld, allowed in result_json if isinstance(tld, str) and allowed]
+        blocked_domains = [tld for tld, allowed in result_json if isinstance(tld, str) and not allowed]
+
+        return allowed_domains, blocked_domains
