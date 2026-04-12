@@ -455,7 +455,7 @@ class DatForwarder(SMTPForwarder):
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split("@")
 
-        recipients, origin = datmail.address.translate_recipient(name, list_ids=True)
+        recipients, origin = datmail.address.translate_recipient(name, list_group_origins=True)
         if not recipients:
             logger.info("Invalid recipient: %s resolved to an empty list", name)
             raise InvalidRecipient(rcptto)
