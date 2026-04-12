@@ -66,10 +66,6 @@ def load_server_module():
     config.SRS_SECRET = "secret"
     config.CC_MAILLISTS = False
     config.ADMINS = []
-    config.DATABASE = "sqlite"
-    config.HOSTNAME = "host"
-    config.USERNAME = "user"
-    config.PASSWORD = "pass"
     config.S3_ENDPOINT_URL = "http://localhost"
     config.S3_ACCESS_KEY_ID = "access"
     config.S3_SECRET_ACCESS_KEY = "secret"
@@ -117,21 +113,6 @@ def load_server_module():
 
     storage.Storage = Storage
     sys.modules["datmail.storage"] = storage
-
-    database = types.ModuleType("datmail.database")
-
-    class Database:
-        def get_mailinglists(self):
-            return []
-
-        def get_mailinglist_members(self, list_id):
-            return []
-
-        def get_email_addresses(self, member_ids):
-            return []
-
-    database.Database = Database
-    sys.modules["datmail.database"] = database
 
     django_client = types.ModuleType("datmail.django_client")
 

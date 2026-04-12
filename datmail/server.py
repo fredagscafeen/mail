@@ -490,19 +490,19 @@ class DatForwarder(SMTPForwarder):
             # Override internal-only if internal mail sender
             if f"@{self.DOMAIN}" in sender_email:
                 return True
-
-            db = datmail.database.Database()
-            mailinglists = db.get_mailinglists()
-            for list_id, name, is_only_internal in mailinglists:
-                if name == list_name and is_only_internal:
-                    # List is internal-only, check if sender is a member
-                    member_ids = db.get_mailinglist_members(list_id)
-                    # Get sender's user ID from email address
-                    sender_addresses = db.get_email_addresses(member_ids)
-                    return sender_email.lower() in [
-                        addr.lower() for addr in sender_addresses
-                    ]
-            return True  # Not an internal-only list
+            
+            try:
+                list_info = self.api_client.get_mailinglist_info(list_name)  # Check if list exists and is internal-only
+            except Exception:
+                logger.exception(f"Error fetching mailing list info for {list_name}")
+                return True  # Allow if we cannot fetch list info
+            
+            if list_info.get("isOnlyInternal") and list_info.get("members"):
+                # List is internal-only, check if sender is a member
+                members = list_info["members"]
+                return sender_email.lower() in [email.lower() for email in members]
+            else:
+                return True  # Not an internal-only list
         except Exception:
             logger.exception("Error checking sender authorization")
             return True  # Allow on error
