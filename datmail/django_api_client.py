@@ -81,9 +81,9 @@ class DjangoAPIClient:
         for entry in result_json:
             if not isinstance(entry, dict):
                 raise ValueError("Expected each spam filter entry to be a dict")
-            domain = entry.get("domain")
+            domain = entry.get("tld")
             if not isinstance(domain, str):
-                raise ValueError("Expected 'domain' to be a string in spam filter entry")
+                raise ValueError("Expected 'tld' to be a string in spam filter entry")
             if entry.get("allowed") is False:
                 blocked_domains.append(domain)
             else:
