@@ -82,7 +82,7 @@ def load_server_module():
             return self.name
 
     address.GroupAlias = GroupAlias
-    address.translate_recipient = lambda name, list_ids=True: ([], {})
+    address.translate_recipient = lambda name, list_group_origins=True: ([], {})
     sys.modules["datmail.address"] = address
     datmail.address = address
 
