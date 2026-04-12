@@ -1,3 +1,5 @@
+.PHONY: pull run down logs redeploy test
+
 pull:
 	git pull
 	docker compose pull
@@ -11,3 +13,5 @@ logs:
 redeploy:
 	make pull
 	make run
+test:
+	pytest -v tests
