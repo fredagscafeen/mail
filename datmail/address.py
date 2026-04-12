@@ -1,7 +1,7 @@
 import re
 from collections import namedtuple, defaultdict
 
-from emailtunnel import InvalidRecipient
+from emailtunnel import InvalidRecipient, logger
 
 import datmail.django_api_client
 from datmail.config import ADMINS
@@ -23,14 +23,14 @@ def get_admin_emails():
     email_addresses = []
     try:
         api_client = datmail.django_api_client.DjangoAPIClient()
-        email_addresses = api_client.get_admin_emails()
+        email_addresses, _ = api_client.get_admin_emails()
     except:
         pass
 
     if not email_addresses:
         email_addresses = [admin[1] for admin in ADMINS]
 
-    return email_addresses
+    return email_addresses, []
 
 
 def translate_recipient(name, list_group_origins=False):
@@ -92,11 +92,17 @@ def parse_recipient(recipient, api_client):
 
 
 def parse_alias_group(alias, api_client):
-    list_info = api_client.get_mailinglist_info(alias)
+    list_info = None
+    try:
+        list_info = api_client.get_mailinglist_info(alias)
+    except Exception:
+        logger.exception("Error fetching mailing list info for alias %r", alias)
+        return None, None, None, None # API error, so not a valid alias
+    
     if list_info is None:
         return None, None, None, None # No such alias, so not a valid alias
 
-    members = list_info.get("members", [])
+    members = list_info.get("members")
     if not members:
         return None, None, None, None # No members, so not a valid alias
 
