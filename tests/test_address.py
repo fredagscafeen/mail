@@ -152,5 +152,5 @@ class AddressTests(unittest.TestCase):
 
         self.assertIn("test@example.com", recipient_emails)
         self.assertIn("test2@example.com", recipient_emails)
-        self.assertEqual(group_origins.get("test@example.com"), set([address.GroupAlias("testlist")]))
-        self.assertEqual(group_origins.get("test2@example.com"), set([address.GroupAlias("testlist")]))
+        self.assertEqual(group_origins.get("test@example.com"), address.GroupAlias("testlist"))
+        self.assertEqual(group_origins.get("test2@example.com"), address.GroupAlias("testlist"))

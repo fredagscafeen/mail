@@ -70,17 +70,16 @@ def parse_recipient(recipient, api_client):
     if invalid_recipients:
         raise InvalidRecipient(invalid_recipients)
 
-    # Mapping: email -> set of groupAliases that included this email
-    email_origins = defaultdict(set)
+    # Mapping: email -> groupAlias that included this email
+    email_origins = {}
     recipient_emails = set()
     for sign, emailList, groupAlias in personEmailOps:
         for email in emailList:
             if sign == "+":
                 recipient_emails.add(email)
-                email_origins[email].add(groupAlias)
+                email_origins[email] = groupAlias
             else:                
-                # Remove this group's association
-                email_origins[email].discard(groupAlias)
+                email_origins[email] = None
                 # If no more groups claim this email, remove it from the recipient set
                 if not email_origins[email]:
                     recipient_emails.discard(email)
