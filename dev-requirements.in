@@ -1,2 +1,4 @@
 -c requirements.txt
 pre-commit
+pytest
+requests-mock

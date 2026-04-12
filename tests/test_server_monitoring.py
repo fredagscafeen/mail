@@ -177,7 +177,8 @@ class ServerMonitoringTests(unittest.TestCase):
         self.forwarder.DOMAIN = "fredagscafeen.dk"
         self.forwarder.REWRITE_FROM = True
         self.forwarder.STRIP_HTML = False
-        self.forwarder.monitoring_client = Mock()
+        self.forwarder.api_client = Mock()
+        self.forwarder.api_client.get_spamfilter = Mock(return_value=[("fredagscafeen.dk", ".com"), ("hundichyan.com", "cheapwatches.com")])
         self.forwarder.store_failed_envelope = Mock()
         self.forwarder.fix_headers = Mock()
         self.forwarder.handle_delivery_report = Mock(return_value=False)
@@ -202,7 +203,7 @@ class ServerMonitoringTests(unittest.TestCase):
         self.forwarder.log_receipt(peer=("127.0.0.1", 12345), envelope=envelope)
 
         self.forwarder.store_envelope.assert_called_once_with(envelope)
-        self.forwarder.monitoring_client.upsert_incoming_mail.assert_not_called()
+        self.forwarder.api_client.upsert_incoming_mail.assert_not_called()
 
     def test_report_processed_mail_posts_expected_payload(self):
         envelope = FakeEnvelope()
@@ -214,7 +215,7 @@ class ServerMonitoringTests(unittest.TestCase):
             mailing_list_name="best",
         )
 
-        self.forwarder.monitoring_client.upsert_incoming_mail.assert_called_once_with(
+        self.forwarder.api_client.upsert_incoming_mail.assert_called_once_with(
             {
                 "request_uuid": "request-123",
                 "received_at": "2026-04-11T15:00:00Z",
@@ -234,7 +235,7 @@ class ServerMonitoringTests(unittest.TestCase):
 
         self.forwarder.report_dropped_mail(envelope, "spam filter triggered")
 
-        self.forwarder.monitoring_client.upsert_incoming_mail.assert_called_once_with(
+        self.forwarder.api_client.upsert_incoming_mail.assert_called_once_with(
             {
                 "request_uuid": "request-123",
                 "received_at": "2026-04-11T15:00:00Z",
@@ -254,7 +255,7 @@ class ServerMonitoringTests(unittest.TestCase):
 
         self.forwarder.report_dropped_mail(envelope, "spam filter triggered")
 
-        self.forwarder.monitoring_client.upsert_incoming_mail.assert_called_once_with(
+        self.forwarder.api_client.upsert_incoming_mail.assert_called_once_with(
             {
                 "request_uuid": "request-123",
                 "received_at": "2026-04-11T15:00:00Z",

@@ -121,7 +121,7 @@ def main():
     ):
         return
 
-    admins = get_admin_emails()
+    admins, _ = get_admin_emails()
 
     keys = "mailfrom rcpttos subject date summary mtime basename".split()
 

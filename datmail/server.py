@@ -611,7 +611,7 @@ class DatForwarder(SMTPForwarder):
             self.forward_to_admin(envelope, str_data, tb)
 
     def forward_to_admin(self, envelope, str_data, tb):
-        admin_emails = datmail.address.get_admin_emails() # Fallback in case of django API failure
+        admin_emails, _ = datmail.address.get_admin_emails() # Fallback in case of django API failure
 
         sender = recipient = f"admin@{self.DOMAIN}"
 
