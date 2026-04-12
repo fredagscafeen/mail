@@ -15,12 +15,12 @@ if "requests" not in sys.modules:
     sys.modules["requests"] = requests
 
 
-class DjangoMonitoringClientTests(unittest.TestCase):
+class DjangoAPIClientTests(unittest.TestCase):
     def test_upsert_incoming_mail_posts_expected_payload(self):
         django_client = importlib.import_module("datmail.django_client")
 
         with patch("datmail.django_client.requests.post") as mocked_post:
-            client = django_client.DjangoMonitoringClient(
+            client = django_client.DjangoAPIClient(
                 "https://web/api", "secret-token"
             )
 

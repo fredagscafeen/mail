@@ -21,15 +21,9 @@ import datmail.headers
 from datmail.address import GroupAlias  # PeriodAlias, DirectAlias,
 from datmail.delivery_reports import parse_delivery_report
 from datmail.dmarc import has_strict_dmarc_policy
-from datmail.config import SRS_SECRET, CC_MAILLISTS
-from datmail.django_client import DjangoMonitoringClient
+from datmail.config import SRS_SECRET, CC_MAILLISTS, ADMINS
+from datmail.django_api_client import DjangoAPIClient
 from datmail.storage import Storage
-
-try:
-    from datmail.config import DJANGO_MONITORING_API_URL, DJANGO_MONITORING_API_TOKEN
-except ImportError:
-    DJANGO_MONITORING_API_URL = None
-    DJANGO_MONITORING_API_TOKEN = None
 
 RecipientGroup = namedtuple("RecipientGroup", "origin recipients".split())
 
@@ -86,11 +80,7 @@ class DatForwarder(SMTPForwarder):
         self.delivered = 0
         self.deliver_recipients = {}
         self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen")
-        self.monitoring_client = None
-        if DJANGO_MONITORING_API_URL and DJANGO_MONITORING_API_TOKEN:
-            self.monitoring_client = DjangoMonitoringClient(
-                DJANGO_MONITORING_API_URL, DJANGO_MONITORING_API_TOKEN
-            )
+        self.api_client = DjangoAPIClient()
         super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
@@ -478,6 +468,7 @@ class DatForwarder(SMTPForwarder):
 
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split("@")
+
         recipients, origin = datmail.address.translate_recipient(name, list_ids=True)
         if not recipients:
             logger.info("Invalid recipient: %s resolved to an empty list", name)
@@ -634,8 +625,7 @@ class DatForwarder(SMTPForwarder):
             self.forward_to_admin(envelope, str_data, tb)
 
     def forward_to_admin(self, envelope, str_data, tb):
-        # admin_emails = datmail.address.get_admin_emails()
-        admin_emails = ["anders@bruunseverinsen.dk"]
+        admin_emails = datmail.address.get_admin_emails() # Fallback in case of django API failure
 
         sender = recipient = f"admin@{self.DOMAIN}"
 
@@ -694,7 +684,7 @@ class DatForwarder(SMTPForwarder):
         return target.split("@", 1)[0].lower()
 
     def report_processed_mail(self, envelope, expanded_recipients, mailing_list_name):
-        if self.monitoring_client is None:
+        if self.api_client is None:
             return
         payload = {
             "request_uuid": self.get_request_uuid(envelope),
@@ -708,12 +698,12 @@ class DatForwarder(SMTPForwarder):
             "expanded_recipients": sorted(expanded_recipients),
         }
         try:
-            self.monitoring_client.upsert_incoming_mail(payload)
+            self.api_client.upsert_incoming_mail(payload)
         except Exception:
             logger.exception("Could not report processed mail to Django")
 
     def report_dropped_mail(self, envelope, reason):
-        if self.monitoring_client is None:
+        if self.api_client is None:
             return
         payload = {
             "request_uuid": self.get_request_uuid(envelope),
@@ -727,7 +717,7 @@ class DatForwarder(SMTPForwarder):
             "expanded_recipients": [],
         }
         try:
-            self.monitoring_client.upsert_incoming_mail(payload)
+            self.api_client.upsert_incoming_mail(payload)
         except Exception:
             logger.exception("Could not report dropped mail to Django")
 

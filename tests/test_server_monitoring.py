@@ -135,14 +135,14 @@ def load_server_module():
 
     django_client = types.ModuleType("datmail.django_client")
 
-    class DjangoMonitoringClient:
+    class DjangoAPIClient:
         def __init__(self, *args, **kwargs):
             pass
 
         def upsert_incoming_mail(self, payload):
             return None
 
-    django_client.DjangoMonitoringClient = DjangoMonitoringClient
+    django_client.DjangoAPIClient = DjangoAPIClient
     sys.modules["datmail.django_client"] = django_client
 
     if "datmail.server" in sys.modules:
