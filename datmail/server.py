@@ -511,8 +511,24 @@ class DatForwarder(SMTPForwarder):
         try:
             from_header = envelope.message.get_header("From", "")
             addresses = email.utils.getaddresses([from_header])
-            if addresses and addresses[0]:
-                return addresses[0]
+            if not addresses or not addresses[0][1]:
+                return email_utils.extract_original_sender(envelope.mailfrom)
+            
+            display_name, email_addr = addresses[0]
+
+            decoded_name_parts = email.header.decode_header(display_name)
+            decoded_name = ""
+            for part, encoding in decoded_name_parts:
+                if isinstance(part, bytes):
+                    # Decode bytes to string using the specified encoding (or utf-8)
+                    decoded_name += part.decode(encoding or 'utf-8')
+                else:
+                    decoded_name += part
+            
+            # Return the clean email address (what you wanted in the DB)
+            # Note: If you want to store the "Name <email>" format in your DB, 
+            # you can return f"{decoded_name.strip()} <{email_addr}>"
+            return decoded_name.strip(), email_addr
         except Exception:
             logger.exception("Error parsing From header")
         return envelope.mailfrom
