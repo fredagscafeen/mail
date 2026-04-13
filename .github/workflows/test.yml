@@ -1,7 +1,7 @@
 name: Run tests
 
 on:
-  push:
+  push: ["master"]
   pull_request:
 
 permissions:
@@ -47,5 +47,19 @@ jobs:
         path: |
           reports/test-results.xml
           test-summary.md
+      if: always()
+    
+    - name: Add PR comment with test summary
+      uses: marocchino/sticky-pull-request-comment@v3
+      with:
+        header: "Test Summary"
+        message: |
+          $(cat test-summary.md)
+      if: always() && github.event_name == 'pull_request'
+    
+    - name: Upload Step Summary
+      run: |
+        echo "Test Summary" >> $GITHUB_STEP_SUMMARY
+        cat test-summary.md >> $GITHUB_STEP_SUMMARY
       if: always()
 
