@@ -1,7 +1,14 @@
 import logging
 import argparse
+import threading
 
 from emailtunnel import logger
+from datmail.control import create_control_server
+from datmail.config import (
+    DATMAIL_CONTROL_HOST,
+    DATMAIL_CONTROL_PORT,
+    DATMAIL_CONTROL_TOKEN,
+)
 from datmail.server import DatForwarder
 
 
@@ -32,12 +39,26 @@ def main():
     relay_port = args.port
 
     server = DatForwarder(receiver_host, receiver_port, relay_host, relay_port)
+    control_server = create_control_server(
+        server,
+        token=DATMAIL_CONTROL_TOKEN,
+        host=DATMAIL_CONTROL_HOST,
+        port=DATMAIL_CONTROL_PORT,
+    )
+    control_thread = threading.Thread(
+        target=control_server.serve_forever,
+        daemon=True,
+    )
+    control_thread.start()
     try:
         server.run()
     except Exception as exn:
         logger.exception("Uncaught exception in DatForwarder.run")
     else:
         logger.info("DatForwarder exiting")
+    finally:
+        control_server.shutdown()
+        control_server.server_close()
 
 
 if __name__ == "__main__":

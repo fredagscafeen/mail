@@ -12,12 +12,9 @@ from emailtunnel import Message, decode_any_header, logger
 
 import datmail.headers
 from datmail.delivery_reports import parse_delivery_report
+from datmail.config import ADMINS
+from datmail.address import get_admin_emails
 
-try:
-    from datmail.address import get_admin_emails
-except ImportError:
-    print("Cannot import datmail.address; stubbing out get_admin_emails")
-    get_admin_emails = lambda: ["anders@bruunseverinsen.dk"]
 
 
 MAX_SIZE = 10
@@ -124,9 +121,7 @@ def main():
     ):
         return
 
-    admins = get_admin_emails()
-
-    # admins = ['anders@bruunseverinsen.dk']
+    admins, _ = get_admin_emails()
 
     keys = "mailfrom rcpttos subject date summary mtime basename".split()
 

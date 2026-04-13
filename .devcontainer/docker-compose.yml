@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/app:cached
+    command: sleep infinity
+    ports:
+      - "9000:9000"

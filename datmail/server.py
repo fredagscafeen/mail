@@ -1,6 +1,9 @@
 import datetime
+from email.generator import BytesGenerator
 import email.header
+import email.parser
 import email.utils
+import io
 import itertools
 import json
 import os
@@ -8,16 +11,20 @@ import re
 import sys
 import textwrap
 import traceback
+import uuid
 from collections import OrderedDict, namedtuple
 
 from emailtunnel import Envelope, InvalidRecipient, Message, SMTPForwarder, logger
 
 import datmail.address
 import datmail.headers
+import datmail.email_utils as email_utils
 from datmail.address import GroupAlias  # PeriodAlias, DirectAlias,
 from datmail.delivery_reports import parse_delivery_report
 from datmail.dmarc import has_strict_dmarc_policy
-from datmail.config import SRS_SECRET, CC_MAILLISTS
+from datmail.config import SRS_SECRET, CC_MAILLISTS, ADMINS
+from datmail.django_api_client import DjangoAPIClient
+from datmail.storage import Storage
 
 RecipientGroup = namedtuple("RecipientGroup", "origin recipients".split())
 
@@ -36,7 +43,6 @@ class DatForwarder(SMTPForwarder):
     # MAIL_FROM = None
 
     DOMAIN = "fredagscafeen.dk"
-    DSN_RECIPIENT = "web@fredagscafeen.dk"
 
     ERROR_TEMPLATE = """
     This is the mail system of Fredagscaféen.
@@ -73,6 +79,8 @@ class DatForwarder(SMTPForwarder):
         self.exceptions = set()
         self.delivered = 0
         self.deliver_recipients = {}
+        self.storage = Storage(bucket_name="mail-archive", region="fredagscafeen")
+        self.api_client = DjangoAPIClient()
         super(DatForwarder, self).__init__(*args, **kwargs)
 
     def should_mailhole(self, message, recipient, sender):
@@ -92,6 +100,18 @@ class DatForwarder(SMTPForwarder):
     def log_receipt(self, peer, envelope):
         mailfrom = envelope.mailfrom
         message = envelope.message
+        envelope.received_at = datetime.datetime.now(datetime.timezone.utc)
+
+        envelope_id = self.generate_uuid()
+
+        try:
+            message.add_header("X-Fredagscafeen-Envelope-ID", envelope_id)
+        except Exception:
+            logger.exception("Could not add X-Fredagscafeen-Envelope-ID header")
+
+        logger.info("Handling new envelope with id: %s", envelope_id)
+
+        self.store_envelope(envelope)
 
         if type(mailfrom) == str:
             sender = "<%s>" % mailfrom
@@ -124,7 +144,7 @@ class DatForwarder(SMTPForwarder):
                 recipients = repr(rcpttos)
             recipients = "To: " + recipients
 
-        logger.info("%s", recipients)
+        logger.info("Initial recipients: %s", recipients)
 
     def log_delivery(self, message, recipients, sender):
         if all("@" in rcpt for rcpt in recipients):
@@ -150,7 +170,7 @@ class DatForwarder(SMTPForwarder):
 
         self.delivered += 1
 
-        logger.info("To: %s", recipients_string)
+        logger.info("Forwarding to resolved recipients: %s", recipients_string)
 
     def handle_delivery_report(self, envelope):
         if envelope.mailfrom != "<>":
@@ -167,27 +187,10 @@ class DatForwarder(SMTPForwarder):
         )
         description = summary = report.notification
         self.store_failed_envelope(envelope, description, summary, inner_envelope)
-        logger.info("%s", summary)
+        logger.info("Failed to forward mail: %s", summary)
         return True
 
-    def get_dsn_redirect_recipient(self, envelope):
-        try:
-            content_type = envelope.message.get_unique_header("Content-Type")
-        except KeyError:
-            content_type = ""
-
-        ctype_report = content_type.startswith("multipart/report")
-        ctype_delivery = "report-type=delivery-status" in content_type
-        if ctype_report and ctype_delivery:
-            return self.DSN_RECIPIENT
-
-        subject_str = str(envelope.message.subject)
-        delivery_status_subject = (
-            "Delayed Mail" in subject_str
-            or "Undelivered Mail Returned to Sender" in subject_str
-        )
-        if envelope.mailfrom == "<>" and delivery_status_subject:
-            return self.DSN_RECIPIENT
+    
 
     def reject(self, envelope):
         # Reject delivery status notifications not sent to admin@
@@ -247,7 +250,7 @@ class DatForwarder(SMTPForwarder):
     def handle_envelope(self, envelope, peer):
         # Get year only once per envelope
         self.year = datetime.datetime.now().year
-        dsn_recipient = self.get_dsn_redirect_recipient(envelope)
+        dsn_recipient = email_utils.get_dsn_redirect_recipient(envelope)
         if dsn_recipient:
             if tuple(r.lower() for r in envelope.rcpttos) != (dsn_recipient.lower(),):
                 logger.info("Redirecting DSN to <%s>", dsn_recipient)
@@ -267,6 +270,7 @@ class DatForwarder(SMTPForwarder):
             summary = "Rejected by DatForwarder.reject (%s)" % reject_reason
             logger.info("%s", summary)
             self.store_failed_envelope(envelope, summary, summary)
+            self.report_dropped_mail(envelope, summary)
             return
 
         for rcptto in envelope.rcpttos:
@@ -274,23 +278,10 @@ class DatForwarder(SMTPForwarder):
                 # Poor man's spam filter
                 from_domain = envelope.from_domain.lower()
                 if from_domain:
-                    allowed_tlds = [
-                        ".com",
-                        ".dk",
-                        "certa.in",  # Uber uses certa.in for onboarding suppliers
-                        "auhack.org",
-                        ".aws",
-                        "frydensbjerg.net",
-                    ]
-                    notallowed_tlds = [
-                        "heyundichan.com",
-                        "eubusinessnews.com",  # Spam nominations
-                        "limib.com",  # Fake debt collection
-                        "graytongue.com",  # Fake business funding
-                    ]
+                    allowed_domains, blocked_domains = self.api_client.get_spamfilter()
                     if not any(
-                        from_domain.endswith(tld) for tld in allowed_tlds
-                    ) or any(from_domain.endswith(tld) for tld in notallowed_tlds):
+                        from_domain.endswith(tld) for tld in allowed_domains
+                    ) or any(from_domain.endswith(tld) for tld in blocked_domains):
                         summary = "Rejected: spam filter triggered"
                         logger.info(
                             "%s: %s (%s) -> %s",
@@ -300,12 +291,13 @@ class DatForwarder(SMTPForwarder):
                             rcptto,
                         )
                         self.store_failed_envelope(envelope, summary, summary)
+                        self.report_dropped_mail(envelope, summary)
                         return
 
                 # Check authorization for internal-only lists
                 list_name = rcptto.split("@")[0]
                 # If the envelope.mailfrom was rewritten by SRS, recover the original
-                sender_email = self.extract_original_sender(envelope.mailfrom)
+                sender_email = email_utils.extract_original_sender(envelope.mailfrom)
                 if not self.is_sender_authorized_for_list(sender_email, list_name):
                     summary = "Rejected: sender not authorized for internal-only list"
                     logger.info(
@@ -316,6 +308,7 @@ class DatForwarder(SMTPForwarder):
                         rcptto,
                     )
                     self.store_failed_envelope(envelope, summary, summary)
+                    self.report_dropped_mail(envelope, summary)
                     return
 
         if CC_MAILLISTS:
@@ -335,7 +328,8 @@ class DatForwarder(SMTPForwarder):
 
         if not self.REWRITE_FROM and not self.STRIP_HTML:
             self.fix_headers(envelope.message)
-        return super(DatForwarder, self).handle_envelope(envelope, peer)
+        result = super(DatForwarder, self).handle_envelope(envelope, peer)
+        return result
 
     def _ensure_list_cc(self, message, list_name):
         """
@@ -406,36 +400,7 @@ class DatForwarder(SMTPForwarder):
         if from_domain_mo:
             return from_domain_mo.group(1)
 
-    def extract_original_sender(self, mailfrom):
-        """
-        Decode SRS-rewritten senders like:
-            SRS0=HASH=TTL=orig-domain=orig-local@forwarder
-        into orig-local@orig-domain; if not an SRS form, return the input.
-        Surrounding angle brackets are tolerated.
-        """
-        try:
-            if not isinstance(mailfrom, str):
-                return mailfrom
-            # Strip surrounding angle brackets if present
-            m = mailfrom.strip()
-            if m.startswith("<") and m.endswith(">"):
-                m = m[1:-1].strip()
-            # Split local part and domain
-            if "@" not in m:
-                return mailfrom
-            local, domain = m.rsplit("@", 1)
-            # If local part looks like SRS, try to recover original
-            if local.upper().startswith("SRS"):
-                parts = local.split("=")
-                # Expect at least: SRS*, HASH, TTL, orig-domain, orig-local
-                if len(parts) >= 3:
-                    orig_local = parts[-1]
-                    orig_domain = parts[-2]
-                    return "%s@%s" % (orig_local, orig_domain)
-        except Exception:
-            # On any failure, fall back to the original string
-            pass
-        return mailfrom
+    
 
     def strict_dmarc_policy(self, envelope):
         if envelope.from_domain:
@@ -443,9 +408,10 @@ class DatForwarder(SMTPForwarder):
 
     def translate_recipient(self, rcptto):
         name, domain = rcptto.split("@")
-        recipients, origin = datmail.address.translate_recipient(name, list_ids=True)
+
+        recipients, origin = datmail.address.translate_recipient(name, list_group_origins=True)
         if not recipients:
-            logger.info("%s resolved to the empty list", name)
+            logger.info("Invalid recipient: %s resolved to an empty list", name)
             raise InvalidRecipient(rcptto)
         recipients.sort(key=lambda r: origin[r])
         group_iter = itertools.groupby(recipients, key=lambda r: origin[r])
@@ -464,19 +430,19 @@ class DatForwarder(SMTPForwarder):
             # Override internal-only if internal mail sender
             if f"@{self.DOMAIN}" in sender_email:
                 return True
-
-            db = datmail.database.Database()
-            mailinglists = db.get_mailinglists()
-            for list_id, name, is_only_internal in mailinglists:
-                if name == list_name and is_only_internal:
-                    # List is internal-only, check if sender is a member
-                    member_ids = db.get_mailinglist_members(list_id)
-                    # Get sender's user ID from email address
-                    sender_addresses = db.get_email_addresses(member_ids)
-                    return sender_email.lower() in [
-                        addr.lower() for addr in sender_addresses
-                    ]
-            return True  # Not an internal-only list
+            
+            try:
+                list_info = self.api_client.get_mailinglist_info(list_name)  # Check if list exists and is internal-only
+            except Exception:
+                logger.exception(f"Error fetching mailing list info for {list_name}")
+                return True  # Allow if we cannot fetch list info
+            
+            if list_info.get("isOnlyInternal") and list_info.get("members"):
+                # List is internal-only, check if sender is a member
+                members = list_info.get("members", [])
+                return sender_email.lower() in [m.get("email", "").lower() for m in members]
+            else:
+                return True  # Not an internal-only list
         except Exception:
             logger.exception("Error checking sender authorization")
             return True  # Allow on error
@@ -538,6 +504,36 @@ class DatForwarder(SMTPForwarder):
                 headers.append(("Reply-To", orig_from))
         return headers
 
+    def get_message_sender(self, envelope):
+        """
+        Safely extracts the display sender from the From header, falling back to the envelope sender if necessary.
+        """
+        try:
+            from_header = envelope.message.get_header("From", "")
+            addresses = email.utils.getaddresses([from_header])
+            if not addresses or not addresses[0][1]:
+                return email_utils.extract_original_sender(envelope.mailfrom)
+            
+            display_name, email_addr = addresses[0]
+
+            decoded_name_parts = email.header.decode_header(display_name)
+            decoded_name = ""
+            for part, encoding in decoded_name_parts:
+                if isinstance(part, bytes):
+                    # Decode bytes to string using the specified encoding (or utf-8)
+                    decoded_name += part.decode(encoding or 'utf-8')
+                else:
+                    decoded_name += part
+            
+            # Return the clean email address (what you wanted in the DB)
+            # Note: If you want to store the "Name <email>" format in your DB, 
+            # you can return f"{decoded_name.strip()} <{email_addr}>"
+            return decoded_name.strip(), email_addr
+        except Exception:
+            logger.exception("Error parsing From header")
+        return envelope.mailfrom
+
+
     def get_from_header(self, envelope, group):
         orig_from = envelope.message.get_header("From")
         orig_to = group.origin.name.lower()
@@ -559,7 +555,16 @@ class DatForwarder(SMTPForwarder):
             charset.header_encoding = charset.body_encoding = email.charset.QP
             message.message.set_payload(t, charset=charset)
         # Use SRS-encoded MAIL FROM when delivering externally
+        original_envelope.expanded_recipients = set(
+            getattr(original_envelope, "expanded_recipients", set())
+        )
+        original_envelope.expanded_recipients.update(recipients)
         sender = self.get_envelope_mailfrom(original_envelope, recipients=recipients)
+        self.report_processed_mail(
+            original_envelope,
+            getattr(original_envelope, "expanded_recipients", set()),
+            self.get_report_mailing_list(original_envelope),
+        )
         super().forward(original_envelope, message, recipients, sender)
 
     def log_invalid_recipient(self, envelope, exn):
@@ -590,8 +595,7 @@ class DatForwarder(SMTPForwarder):
             self.forward_to_admin(envelope, str_data, tb)
 
     def forward_to_admin(self, envelope, str_data, tb):
-        # admin_emails = datmail.address.get_admin_emails()
-        admin_emails = ["anders@bruunseverinsen.dk"]
+        admin_emails, _ = datmail.address.get_admin_emails() # Fallback in case of django API failure
 
         sender = recipient = f"admin@{self.DOMAIN}"
 
@@ -620,6 +624,119 @@ class DatForwarder(SMTPForwarder):
             logger.exception("Could not add extra headers in forward_to_admin")
 
         self.deliver(admin_message, admin_emails, sender)
+
+    def generate_uuid(self):
+        return str(uuid.uuid4())
+
+    def get_request_uuid(self, envelope):
+        return envelope.message.get_header("X-Fredagscafeen-Envelope-ID")
+
+    def get_received_at(self, envelope):
+        received_at = getattr(envelope, "received_at", None)
+        if received_at is None:
+            received_at = datetime.datetime.now(datetime.timezone.utc)
+        elif received_at.tzinfo is None:
+            received_at = received_at.replace(tzinfo=datetime.timezone.utc)
+        return received_at.isoformat().replace("+00:00", "Z")
+
+    def get_archive_object_name(self, envelope):
+        return f"archive/{self.get_request_uuid(envelope)}.eml"
+
+    def get_report_target(self, envelope):
+        if envelope.rcpttos:
+            return envelope.rcpttos[0]
+        return ""
+
+    def get_report_mailing_list(self, envelope):
+        target = self.get_report_target(envelope)
+        if f"@{self.DOMAIN}" not in target.lower():
+            return None
+        return target.split("@", 1)[0].lower()
+
+    def report_processed_mail(self, envelope, expanded_recipients, mailing_list_name):
+        if self.api_client is None:
+            return
+        
+        address = self.get_message_sender(envelope)
+        if isinstance(address, tuple) and len(address) == 2:
+            sender = f"%s <%s>" % (address[0], address[1])
+        elif isinstance(address, str):
+            sender = address
+        else:            
+            sender = str(address)
+
+        payload = {
+            "request_uuid": self.get_request_uuid(envelope),
+            "received_at": self.get_received_at(envelope),
+            "sender": sender,
+            "target": self.get_report_target(envelope),
+            "mailing_list": mailing_list_name,
+            "status": "PROCESSED",
+            "reason": "",
+            "s3_object_key": self.get_archive_object_name(envelope),
+            "expanded_recipients": sorted(expanded_recipients),
+        }
+        try:
+            self.api_client.upsert_incoming_mail(payload)
+        except Exception:
+            logger.exception("Could not report processed mail to Django")
+
+    def report_dropped_mail(self, envelope, reason):
+        if self.api_client is None:
+            return
+        
+        address = self.get_message_sender(envelope)
+        if isinstance(address, tuple) and len(address) == 2:
+            sender = f"%s <%s>" % (address[0], address[1])
+        elif isinstance(address, str):
+            sender = address
+        else:            
+            sender = str(address)
+
+        payload = {
+            "request_uuid": self.get_request_uuid(envelope),
+            "received_at": self.get_received_at(envelope),
+            "sender": sender,
+            "target": self.get_report_target(envelope),
+            "mailing_list": self.get_report_mailing_list(envelope),
+            "status": "DROPPED",
+            "reason": reason,
+            "s3_object_key": self.get_archive_object_name(envelope),
+            "expanded_recipients": [],
+        }
+        try:
+            self.api_client.upsert_incoming_mail(payload)
+        except Exception:
+            logger.exception("Could not report dropped mail to Django")
+
+    def resend_archived_mail(self, request_uuid, target, sender, original_target):
+        raw_eml = self.storage.get_object(f"archive/{request_uuid}.eml")
+        parsed_message = email.parser.BytesParser().parsebytes(raw_eml)
+        message = Message(parsed_message)
+        envelope = Envelope(message, sender, [original_target])
+        group = RecipientGroup(GroupAlias(original_target.split("@", 1)[0]), [target])
+        for field, value in self.get_extra_headers(envelope, group):
+            envelope.message.set_unique_header(field, value)
+        self.forward(envelope, envelope.message, [target], sender)
+
+    def get_raw_eml(self, message):
+        """Helper to get the raw bytes of an email message."""
+        # 'message' here is your emailtunnel.Message object
+        # 'message.message' is the underlying email.message.Message
+        out = io.BytesIO()
+        gen = BytesGenerator(out)
+        gen.flatten(message.message)
+        return out.getvalue()
+    
+    def store_envelope(self, envelope):
+        """Store the raw email in S3 for archival."""
+        try:
+            raw_eml = self.get_raw_eml(envelope.message)
+            envelope_id = envelope.message.get_header("X-Fredagscafeen-Envelope-ID")
+            object_name = f"archive/{envelope_id}.eml"
+            self.storage.upload_object(raw_eml, object_name)
+        except Exception as e:
+            logger.error(f"Error storing envelope to S3: {e}")
 
     def store_failed_envelope(
         self, envelope, description, summary, inner_envelope=None
