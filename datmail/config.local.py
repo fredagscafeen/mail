@@ -4,6 +4,8 @@ ADMINS = [
 
 CC_MAILLISTS = False
 
+DSN_RECIPIENT = "web@fredagscafeen.dk"
+
 # run 'openssl rand -hex 32'
 SRS_SECRET = "change-this-secret"
 

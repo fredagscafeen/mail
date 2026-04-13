@@ -183,10 +183,8 @@ class ServerMonitoringTests(unittest.TestCase):
         self.forwarder.fix_headers = Mock()
         self.forwarder.handle_delivery_report = Mock(return_value=False)
         self.forwarder.is_sender_authorized_for_list = Mock(return_value=True)
-        self.forwarder.extract_original_sender = Mock(return_value="sender@example.com")
         self.forwarder.get_from_domain = Mock(return_value="example.com")
         self.forwarder.reject = Mock(return_value=None)
-        self.forwarder.get_dsn_redirect_recipient = Mock(return_value=None)
         self.forwarder.storage = Mock()
         self.forwarder.deliver_recipients = {}
         self.forwarder.delivered = 0
