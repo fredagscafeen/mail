@@ -1,0 +1,50 @@
+name: Run tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python 3.8.10
+      uses: actions/setup-python@v6
+      with:
+        python-version: 3.8.10
+        cache: 'pip' # caching pip dependencies
+
+    - name: Install dependencies
+      run: |
+        pip install -r dev-requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest -v --junit-xml=reports/test-results.xml
+      if: always() # Ensure this step runs even if previous steps fail
+    
+    - name: Test Summary
+      uses: test-summary/action@v2
+      with:
+        paths: reports/test-results.xml
+        output: test-summary.md
+        show: "fail, skip"
+      if: always()
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v7
+      with:
+        name: Test Results
+        path: |
+          reports/test-results.xml
+          test-summary.md
+      if: always()
+
