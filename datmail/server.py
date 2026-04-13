@@ -652,7 +652,7 @@ class DatForwarder(SMTPForwarder):
         payload = {
             "request_uuid": self.get_request_uuid(envelope),
             "received_at": self.get_received_at(envelope),
-            "sender": email_utils.extract_original_sender(envelope.mailfrom),
+            "sender": sender,
             "target": self.get_report_target(envelope),
             "mailing_list": mailing_list_name,
             "status": "PROCESSED",
