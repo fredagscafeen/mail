@@ -15,8 +15,9 @@ The current `master` branch is a hybrid SMTP + HTTP + object-storage system:
 | Location | Purpose |
 | --- | --- |
 | [GitHub wiki](https://github.com/fredagscafeen/mail/wiki) | Published developer docs, architecture, message flows, and API reference |
-| [docs/README.md](docs/README.md) | In-repo source docs for architecture, flows, and code map |
-| [docs/_Sidebar.md](docs/_Sidebar.md) | Wiki-ready navigation structure kept next to the source docs |
+| [Architecture](https://github.com/fredagscafeen/mail/wiki/Architecture) | Docs for architecture, flows, and code map |
+| [Message Flows](https://github.com/fredagscafeen/mail/wiki/Message-Flows) | Docs for message flows |
+| [API Reference](https://github.com/fredagscafeen/mail/wiki/API-Reference) | Docs for API reference |
 
 Recommended reading order:
 
@@ -25,6 +26,31 @@ Recommended reading order:
 3. [Message Flows](https://github.com/fredagscafeen/mail/wiki/Message-Flows)
 4. [API Reference](https://github.com/fredagscafeen/mail/wiki/API-Reference)
 5. [Code Map](https://github.com/fredagscafeen/mail/wiki/Code-Map)
+
+### Update the wiki
+
+The wiki is a separate Git repository:
+
+```bash
+git clone git@github.com:fredagscafeen/mail.wiki.git
+cd mail.wiki
+git pull --rebase origin master
+```
+
+After editing the wiki pages:
+
+```bash
+git add .
+git commit -m "docs: update wiki"
+git push origin master
+```
+
+If the push is rejected, rebase on the latest wiki changes and push again:
+
+```bash
+git pull --rebase origin master
+git push origin master
+```
 
 ## Running with Docker
 
