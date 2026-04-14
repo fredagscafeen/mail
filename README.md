@@ -1,155 +1,91 @@
-## A lightweight email forwarding framework
+# DatMail
 
-### Setup
+DatMail is the SMTP mailing-list forwarder for `@fredagscafeen.dk`.
 
-#### To run project with Docker (Recommended)
+The current `master` branch is a hybrid SMTP + HTTP + object-storage system:
 
-1. checkout project from vcs: `git clone git@github.com:fredagscafeen/mail.git`
-2. copy config file: `cp datmail/config.sample.py datmail/config.py`
-3. edit the config file to match your setup
-4. build and run with docker-compose: `docker-compose up --build`
+- Postfix receives inbound mail and relays outbound mail.
+- DatMail applies mailing-list policy, spam checks, header rewriting, and resend handling.
+- Mailing-list membership and spam-filter rules come from a Django API.
+- Raw inbound `.eml` files are archived to S3-compatible storage.
+- Processed and dropped mail is reported back to the Django backend.
 
-The mailserver will be available on port 9000.
-The resend control endpoint listens on port 9001 inside the container by default.
+## Documentation
 
-To run in the background: `docker-compose up -d --build`
-To view logs: `docker-compose logs -f mailserver`
-To stop: `docker-compose down`
+| Location | Purpose |
+| --- | --- |
+| [GitHub wiki](https://github.com/fredagscafeen/mail/wiki) | Published developer docs, architecture, message flows, and API reference |
+| [docs/README.md](docs/README.md) | In-repo source docs for architecture, flows, and code map |
+| [docs/_Sidebar.md](docs/_Sidebar.md) | Wiki-ready navigation structure kept next to the source docs |
 
-#### To run project locally
+Recommended reading order:
 
-A prerequisite here, is to have **Python 3.8.10** installed and in PATH. Having this exact version ensures
-smooth compatibility with the dependencies and the server, working with and running that version.
-A tip is to install [pyenv](https://github.com/pyenv/pyenv), which makes it easy to install the specific version, and toggle between
-versions.
+1. [Wiki Home](https://github.com/fredagscafeen/mail/wiki)
+2. [Architecture](https://github.com/fredagscafeen/mail/wiki/Architecture)
+3. [Message Flows](https://github.com/fredagscafeen/mail/wiki/Message-Flows)
+4. [API Reference](https://github.com/fredagscafeen/mail/wiki/API-Reference)
+5. [Code Map](https://github.com/fredagscafeen/mail/wiki/Code-Map)
 
-After that, you are ready to follow the steps below:
+## Running with Docker
 
-1. checkout project from vcs: `git clone git@github.com:fredagscafeen/mail.git`
-2. setup virtual env: `python3 -mvenv ~/.cache/venvs/fredagscafeen-mail`
-3. activate virtual env: `source ~/.cache/venvs/fredagscafeen-mail/bin/activate`
-4. install `pip-tools`: `pip install pip-tools`
-5. install dependencies: `pip-sync requirements.txt dev-requirements.txt`
-6. install pre-commit hook: `pre-commit install`
-
-#### Monitoring and resend configuration
-
-`datmail/config.py` should also define:
-
-* `DJANGO_MONITORING_API_URL` and `DJANGO_MONITORING_API_TOKEN` so datmail can upsert processed and dropped mail into Django.
-* `DATMAIL_CONTROL_HOST`, `DATMAIL_CONTROL_PORT`, and `DATMAIL_CONTROL_TOKEN` so Django admin resend actions can call datmail's authenticated `/control/resend` endpoint.
-
-The resend endpoint expects Django to send the archived message `request_uuid`, the resend `target`, the original envelope `sender`, and the original incoming target address so datmail can replay the archived `.eml` with the usual forwarding headers.
-
-### Introduction
-
-`emailtunnel` is a small Python 3 framework that uses the `smtplib` and `email`
-standard library modules along with `aiosmtpd` to implement simple mailing
-list forwarding.
-
-The user must supply a function that maps symbolic recipient addresses on their
-own domain to user email addresses.
-
-A simple example, operating on the domain `maillist.local` with two users
-and three lists:
-
-```
-USERS = {
-    'admin@maillist.local': ['c2h5oh@example.com'],
-    'luser@maillist.local': ['noreply@yahoo.com'],
-    'all@maillist.local': ['c2h5oh@example.com', 'noreply@yahoo.com'],
-}
-
-class SimpleForwarder(emailtunnel.SMTPForwarder):
-    def translate_recipient(self, rcptto):
-        try:
-            return USERS[rcptto]
-        except KeyError:
-            raise emailtunnel.InvalidRecipient(rcptto)
-
-    def translate_subject(self, envelope):
-        return '[Simple-List] %s' % envelope.message.subject
+```bash
+cp datmail/config.local.py datmail/config.py
+docker-compose up --build
 ```
 
-The `translate_recipient` method either returns a list of external recipients
-to relay the envelope to, or the empty list to silently drop the email,
-or it may raise `InvalidRecipient` to respond with SMTP error 550.
-If another exception is raised while processing the message,
-emailtunnel responds to the SMTP peer with SMTP error 451,
-indicating that the error is temporary, and the peer should try again later.
-In this case, the application should override `handle_error` to inform the
-local admin of the failure.
+DatMail listens on port `9000` and relays outbound mail to `host.docker.internal:25`.
 
+The resend control endpoint listens on port `9001` inside the container by default.
 
-### Repository overview
+Useful commands:
 
-The framework is implemented in `emailtunnel/__init__.py`,
-implementing the following classes:
+```bash
+docker-compose up -d --build
+docker-compose logs -f app
+docker-compose down
+```
 
-* InvalidRecipient (exception)
-* Message (encapsulating an instance of `email.message.Message`)
-* Envelope (encapsulating a Message, a recipient and a sender)
-* SMTPReceiver (abstract base class utilizing `aiosmtpd`)
-* LoggingReceiver (simple implementation of SMTPReceiver)
-* RelayMixin (mixin providing envelope delivery to a relay)
-* SMTPForwarder (subclass of SMTPReceiver)
+## Running locally
 
-The framework may be tested by running `python -m emailtunnel --help`,
-which runs the code in `emailtunnel/__main__.py`
-that allows simple logging and relaying of emails.
+Python `3.8.10` is the expected runtime version.
 
-The `emailtunnel.send` module may be run from the command line to send simple
-emails specified via command line parameters and standard input.
+```bash
+python3 -m venv ~/.cache/venvs/fredagscafeen-mail
+source ~/.cache/venvs/fredagscafeen-mail/bin/activate
+pip install pip-tools
+pip-sync requirements.txt dev-requirements.txt
+pre-commit install
+```
 
+Then start DatMail with:
 
-### Application example
+```bash
+python3 -m datmail
+```
 
-The `tkmail.server` module implements `TKForwarder`, an application of
-`emailtunnel.SMTPForwarder`.
+## Configuration
 
-It supports logging of exceptions and misdeliveries to a list of admins,
-and it uses the `tkmail.address` module to perform delicate parsing of
-recipient addresses.
+Create `datmail/config.py` from the checked-in sample:
 
-The `TKForwarder` is started by running the `tkmail` module from the command
-line by calling `python -m tkmail --help`.
+```bash
+cp datmail/config.local.py datmail/config.py
+```
 
-The `tkmail.monitor` module is designed to be run daily from a cron job,
-and it checks the error directory and sends a report to admins.
+At minimum, configure:
 
-The `tkmail.test` module starts an instance of `TKForwarder`,
-feeds it test messages and checks the relayed messages for correctness.
+- `SRS_SECRET`
+- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
+- `DATMAIL_CONTROL_HOST`, `DATMAIL_CONTROL_PORT`, `DATMAIL_CONTROL_TOKEN`
+- the Django API base URL and token used by `datmail/django_api_client.py`
 
+For the detailed API contracts and payload shapes, use the [GitHub wiki API Reference](https://github.com/fredagscafeen/mail/wiki/API-Reference).
 
-### SMTPForwarder logic
+## Monitoring
 
-When an SMTP client connects and sends an SMTP envelope,
-the method `SMTPReceiver.process_message` is invoked by `emailtunnel`.
-First, the message data is stored in an instance of `Message`,
-which performs a sanity roundtrip parsing check to make sure that
-`data == str(Message(data))` modulo trailing whitespace.
+The legacy monitoring job is still used for local error digests:
 
-Then, the envelope is passed to `handle_envelope`,
-which is implemented in a subclass (such as SMTPForwarder).
-If `handle_envelope` returns None, `emailtunnel` assumes that the envelope was
-successfully delivered.
-Otherwise, it must return a string, which is returned to the SMTP remote peer.
-If an exception occurs in `handle_envelope`, SMTP error 451 is returned to the
-peer ("Requested action aborted: error in processing").
-The subclass may implement `handle_error` to do further logging.
+```bash
+python3 -m datmail.monitor
+```
 
-The `SMTPForwarder` class implements `handle_envelope`
-by transforming the Subject via `translate_subject` in the subclass
-and by transforming the list of recipients via `get_envelope_recipients`.
-The default implementation of `get_envelope_recipients` transforms each
-recipient using `translate_recipient`, which is the identity map by default.
-The forwarded envelope has the sender provided in `get_envelope_mailfrom`.
-The default implementation of `get_envelope_mailfrom` returns the sender
-of the incoming envelope as the outgoing sender.
-
-The envelope is passed on with only the subject changed
-using `RelayMixin.deliver`, which requires the attributes
-`relay_host` and `relay_port` to be set.
-
-If `InvalidRecipient` is raised during `get_envelope_recipients`, SMTP error
-550 is returned to the SMTP peer (mailbox unavailable) and no email is relayed.
+It reads `error/`, emails an admin digest when the threshold is reached, and archives handled reports into `errorarchive/`.
