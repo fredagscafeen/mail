@@ -398,8 +398,11 @@ class DatForwarder(SMTPForwarder):
         from_header = str(from_header) if from_header else ""
         from_domain_mo = re.search(r"@([^ \t\n>]+)", from_header)
         if from_domain_mo:
-            return from_domain_mo.group(1)
+            
+            # Fix bug where domain is extracted with trailing quote, e.g., "example.com" -> example.com"
+            from_domain_without_quotes = from_domain_mo.group(1).rstrip('"')
 
+            return from_domain_without_quotes
     
 
     def strict_dmarc_policy(self, envelope):
